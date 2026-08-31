@@ -1,57 +1,66 @@
 using Npgsql;
 using PersonalFinanceTracker.Api.Models;
+using System.Security.Claims;
 
 namespace PersonalFinanceTracker.Api.Endpoints;
 
 // Expense ile ilgili endpoint'leri tek yerde toplar.
 public static class ExpenseEndpoints
 {
-
     public static void MapExpenseEndpoints(this WebApplication app)
 
     {
         // Veritabanındaki tüm harcamaları getiren endpoint
-        app.MapGet("/api/expenses", async (IConfiguration configuration) =>
+        app.MapGet("/api/expenses", async (IConfiguration configuration, ClaimsPrincipal user) =>
         {
+            var userIdValue =
+            user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (!int.TryParse(userIdValue, out var userId))
+            {
+                return Results.Unauthorized();
+            }
             try
             {
-                 var connectionString =
-                configuration.GetConnectionString("DefaultConnection");
+                var connectionString =
+               configuration.GetConnectionString("DefaultConnection");
 
-            await using var connection =
-                new NpgsqlConnection(connectionString);
+                await using var connection =
+                    new NpgsqlConnection(connectionString);
 
-            await connection.OpenAsync();
+                await connection.OpenAsync();
 
-            var sql = """
+                var sql = """
                 SELECT id, user_id, category_id, amount, date, place, description, payment_method_id
                 FROM expenses
+                WHERE user_id = @userId
                 ORDER BY id;
                 """;
 
-            await using var command =
-                new NpgsqlCommand(sql, connection);
+                await using var command =
+                    new NpgsqlCommand(sql, connection);
+                command.Parameters.AddWithValue("userId", userId);
 
-            await using var reader =
-                await command.ExecuteReaderAsync();
+                await using var reader =
+                    await command.ExecuteReaderAsync();
 
-            var expenses = new List<ExpenseResponse>();
+                var expenses = new List<ExpenseResponse>();
 
-            while (await reader.ReadAsync())
-            {
-                expenses.Add(new ExpenseResponse(
-                    reader.GetInt32(0),
-                    reader.GetInt32(1),
-                    reader.GetInt32(2),
-                    reader.GetDecimal(3),
-                    DateOnly.FromDateTime(reader.GetDateTime(4)),
-                    reader.IsDBNull(5) ? null : reader.GetString(5),
-                    reader.IsDBNull(6) ? null : reader.GetString(6),
-                    reader.GetInt32(7)
-                ));
-            }
+                while (await reader.ReadAsync())
+                {
+                    expenses.Add(new ExpenseResponse(
+                        reader.GetInt32(0),
+                        reader.GetInt32(1),
+                        reader.GetInt32(2),
+                        reader.GetDecimal(3),
+                        DateOnly.FromDateTime(reader.GetDateTime(4)),
+                        reader.IsDBNull(5) ? null : reader.GetString(5),
+                        reader.IsDBNull(6) ? null : reader.GetString(6),
+                        reader.GetInt32(7)
+                    ));
+                }
 
-            return Results.Ok(expenses);
+                return Results.Ok(expenses);
             }
             catch
             {
@@ -59,10 +68,11 @@ public static class ExpenseEndpoints
                     "Harcamalar getirilirken beklenmeyen bir hata oluştu."
                 );
             }
-        });
+        })
+        .RequireAuthorization();
 
         // ID ile tek bir harcamayı veritabanından getiren endpoint
-        app.MapGet("/api/expenses/{id}", async (int id, IConfiguration configuration) =>
+        app.MapGet("/api/expenses/{id}", async (int id, IConfiguration configuration, ClaimsPrincipal user) =>
         {
             if (id <= 0)
             {
@@ -70,6 +80,13 @@ public static class ExpenseEndpoints
                 {
                     message = "Id 0'dan büyük olmalıdır"
                 });
+            }
+            var userIdValue =
+            user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (!int.TryParse(userIdValue, out var userId))
+            {
+                return Results.Unauthorized();
             }
 
             try
@@ -85,13 +102,15 @@ public static class ExpenseEndpoints
                 var sql = """
                 SELECT id, user_id, category_id, amount, date, place, description, payment_method_id
                 FROM expenses
-                WHERE id = @id;
+                WHERE id = @id
+                    AND user_id = @userId;
                 """;
 
                 await using var command =
                     new NpgsqlCommand(sql, connection);
 
                 command.Parameters.AddWithValue("id", id);
+                command.Parameters.AddWithValue("userId", userId);
 
                 await using var reader =
                     await command.ExecuteReaderAsync();
@@ -123,15 +142,22 @@ public static class ExpenseEndpoints
                     "Harcama getirilirken beklenmeyen bir hata oluştu."
                 );
             }
-           
-        });
+
+        })
+        .RequireAuthorization();
 
         // Yeni harcamayı veritabanına ekleyen endpoint
-        app.MapPost("/api/expenses", async (ExpenseRequest expense, IConfiguration configuration) =>
+        app.MapPost("/api/expenses", async (ExpenseRequest expense, IConfiguration configuration, ClaimsPrincipal user) =>
         {
+            var userIdValue =
+                user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (!int.TryParse(userIdValue, out var userId))
+            {
+                return Results.Unauthorized();
+            }
             //Validasyon: Tutar ve ID değerleri 0'dan büyük olmalıdır, yer bilgisi boş olamaz
             if (expense.Amount <= 0 ||
-                expense.UserId <= 0 ||
                 expense.CategoryId <= 0 ||
                 expense.PaymentMethodId <= 0)
             {
@@ -170,7 +196,7 @@ public static class ExpenseEndpoints
                 await using var command =
                     new NpgsqlCommand(sql, connection);
 
-                command.Parameters.AddWithValue("userId", expense.UserId);
+                command.Parameters.AddWithValue("userId", userId);
                 command.Parameters.AddWithValue("categoryId", expense.CategoryId);
                 command.Parameters.AddWithValue("amount", expense.Amount);
                 command.Parameters.AddWithValue("date", expense.Date);
@@ -203,13 +229,20 @@ public static class ExpenseEndpoints
                 );
             }
 
-        });
+        })
+        .RequireAuthorization();
 
         // ID ile bir harcamayı veritabanında güncelleyen endpoint
-        app.MapPut("/api/expenses/{id}", async (int id, ExpenseRequest expense, IConfiguration configuration) =>
+        app.MapPut("/api/expenses/{id}", async (int id, ExpenseRequest expense, IConfiguration configuration, ClaimsPrincipal user) =>
         {
+            var userIdValue =
+                user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (!int.TryParse(userIdValue, out var userId))
+            {
+                return Results.Unauthorized();
+            }
             if (expense.Amount <= 0 ||
-                expense.UserId <= 0 ||
                 expense.CategoryId <= 0 ||
                 expense.PaymentMethodId <= 0)
             {
@@ -246,14 +279,15 @@ public static class ExpenseEndpoints
                 place = @place,
                 description = @description,
                 payment_method_id = @paymentMethodId
-                WHERE id = @id;
+                WHERE id = @id
+                AND user_id = @userId;
                 """;
 
                 await using var command =
                                 new NpgsqlCommand(sql, connection);
 
                 command.Parameters.AddWithValue("id", id);
-                command.Parameters.AddWithValue("userId", expense.UserId);
+                command.Parameters.AddWithValue("userId", userId);
                 command.Parameters.AddWithValue("categoryId", expense.CategoryId);
                 command.Parameters.AddWithValue("amount", expense.Amount);
                 command.Parameters.AddWithValue("date", expense.Date);
@@ -289,17 +323,26 @@ public static class ExpenseEndpoints
                     "Harcama güncellenirken beklenmeyen bir hata oluştu."
                 );
             }
-        });
+        })
+        .RequireAuthorization();
 
         // ID ile bir harcamayı veritabanından silen endpoint
-        app.MapDelete("/api/expenses/{id}", async (int id, IConfiguration configuration) =>
+        app.MapDelete("/api/expenses/{id}", async (int id, IConfiguration configuration, ClaimsPrincipal user) =>
         {
+
             if (id <= 0)
             {
                 return Results.BadRequest(new
                 {
                     message = "Id 0'dan büyük olmalıdır"
                 });
+            }
+            var userIdValue =
+                user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (!int.TryParse(userIdValue, out var userId))
+            {
+                return Results.Unauthorized();
             }
             try
             {
@@ -313,13 +356,15 @@ public static class ExpenseEndpoints
 
                 var sql = """
                 DELETE FROM expenses
-                WHERE id = @id;
+                WHERE id = @id
+                    AND user_id = @userId;
                 """;
 
                 await using var command =
                                 new NpgsqlCommand(sql, connection);
 
                 command.Parameters.AddWithValue("id", id);
+                command.Parameters.AddWithValue("userId", userId);
 
                 var affectedRows =
                     await command.ExecuteNonQueryAsync();
@@ -344,7 +389,8 @@ public static class ExpenseEndpoints
             }
 
 
-        });
+        })
+        .RequireAuthorization();
 
 
 
