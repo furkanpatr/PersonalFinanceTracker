@@ -19,3 +19,8 @@ A backend API project for tracking personal expenses.
 - Delete expense
 - Basic validation
 - Error handling
+- User registration
+- User login
+- Password hashing
+- JWT authentication
+- User-scoped expense access
