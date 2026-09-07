@@ -8,22 +8,24 @@ namespace PersonalFinanceTracker.Api.Endpoints;
 public static class ExpenseEndpoints
 {
     public static void MapExpenseEndpoints(this WebApplication app)
-
     {
         // Veritabanındaki tüm harcamaları getiren endpoint
-        app.MapGet("/api/expenses", async (IConfiguration configuration, ClaimsPrincipal user) =>
+        app.MapGet("/api/expenses", async (
+            IConfiguration configuration,
+            ClaimsPrincipal user) =>
         {
             var userIdValue =
-            user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             if (!int.TryParse(userIdValue, out var userId))
             {
                 return Results.Unauthorized();
             }
+
             try
             {
                 var connectionString =
-               configuration.GetConnectionString("DefaultConnection");
+                    configuration.GetConnectionString("DefaultConnection");
 
                 await using var connection =
                     new NpgsqlConnection(connectionString);
@@ -31,14 +33,23 @@ public static class ExpenseEndpoints
                 await connection.OpenAsync();
 
                 var sql = """
-                SELECT id, user_id, category_id, amount, date, place, description, payment_method_id
-                FROM expenses
-                WHERE user_id = @userId
-                ORDER BY id;
-                """;
+                    SELECT
+                        id,
+                        user_id,
+                        category_id,
+                        amount,
+                        date,
+                        place,
+                        description,
+                        payment_method_id
+                    FROM expenses
+                    WHERE user_id = @userId
+                    ORDER BY id;
+                    """;
 
                 await using var command =
                     new NpgsqlCommand(sql, connection);
+
                 command.Parameters.AddWithValue("userId", userId);
 
                 await using var reader =
@@ -72,7 +83,10 @@ public static class ExpenseEndpoints
         .RequireAuthorization();
 
         // ID ile tek bir harcamayı veritabanından getiren endpoint
-        app.MapGet("/api/expenses/{id}", async (int id, IConfiguration configuration, ClaimsPrincipal user) =>
+        app.MapGet("/api/expenses/{id}", async (
+            int id,
+            IConfiguration configuration,
+            ClaimsPrincipal user) =>
         {
             if (id <= 0)
             {
@@ -81,8 +95,9 @@ public static class ExpenseEndpoints
                     message = "Id 0'dan büyük olmalıdır"
                 });
             }
+
             var userIdValue =
-            user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             if (!int.TryParse(userIdValue, out var userId))
             {
@@ -92,7 +107,7 @@ public static class ExpenseEndpoints
             try
             {
                 var connectionString =
-               configuration.GetConnectionString("DefaultConnection");
+                    configuration.GetConnectionString("DefaultConnection");
 
                 await using var connection =
                     new NpgsqlConnection(connectionString);
@@ -100,11 +115,19 @@ public static class ExpenseEndpoints
                 await connection.OpenAsync();
 
                 var sql = """
-                SELECT id, user_id, category_id, amount, date, place, description, payment_method_id
-                FROM expenses
-                WHERE id = @id
-                    AND user_id = @userId;
-                """;
+                    SELECT
+                        id,
+                        user_id,
+                        category_id,
+                        amount,
+                        date,
+                        place,
+                        description,
+                        payment_method_id
+                    FROM expenses
+                    WHERE id = @id
+                      AND user_id = @userId;
+                    """;
 
                 await using var command =
                     new NpgsqlCommand(sql, connection);
@@ -142,12 +165,14 @@ public static class ExpenseEndpoints
                     "Harcama getirilirken beklenmeyen bir hata oluştu."
                 );
             }
-
         })
         .RequireAuthorization();
 
         // Yeni harcamayı veritabanına ekleyen endpoint
-        app.MapPost("/api/expenses", async (ExpenseRequest expense, IConfiguration configuration, ClaimsPrincipal user) =>
+        app.MapPost("/api/expenses", async (
+            ExpenseRequest expense,
+            IConfiguration configuration,
+            ClaimsPrincipal user) =>
         {
             var userIdValue =
                 user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -156,7 +181,8 @@ public static class ExpenseEndpoints
             {
                 return Results.Unauthorized();
             }
-            //Validasyon: Tutar ve ID değerleri 0'dan büyük olmalıdır, yer bilgisi boş olamaz
+
+            // Validation: Tutar ve ID değerleri 0'dan büyük olmalıdır, yer bilgisi boş olamaz
             if (expense.Amount <= 0 ||
                 expense.CategoryId <= 0 ||
                 expense.PaymentMethodId <= 0)
@@ -178,7 +204,7 @@ public static class ExpenseEndpoints
             try
             {
                 var connectionString =
-                configuration.GetConnectionString("DefaultConnection");
+                    configuration.GetConnectionString("DefaultConnection");
 
                 await using var connection =
                     new NpgsqlConnection(connectionString);
@@ -186,12 +212,12 @@ public static class ExpenseEndpoints
                 await connection.OpenAsync();
 
                 var sql = """
-                INSERT INTO expenses
-                (user_id, category_id, amount, date, place, description, payment_method_id)
-                VALUES
-                (@userId, @categoryId, @amount, @date, @place, @description, @paymentMethodId)
-                RETURNING id;
-                """;
+                    INSERT INTO expenses
+                        (user_id, category_id, amount, date, place, description, payment_method_id)
+                    VALUES
+                        (@userId, @categoryId, @amount, @date, @place, @description, @paymentMethodId)
+                    RETURNING id;
+                    """;
 
                 await using var command =
                     new NpgsqlCommand(sql, connection);
@@ -204,21 +230,24 @@ public static class ExpenseEndpoints
                 command.Parameters.AddWithValue("description", expense.Description);
                 command.Parameters.AddWithValue("paymentMethodId", expense.PaymentMethodId);
 
-                var newId = (int)(await command.ExecuteScalarAsync())!;
+                var newId =
+                    (int)(await command.ExecuteScalarAsync())!;
 
-                return Results.Created($"/api/expenses/{newId}", new
-                {
-                    id = newId,
-                    message = "Harcama başarıyla eklendi"
-                });
+                return Results.Created(
+                    $"/api/expenses/{newId}",
+                    new
+                    {
+                        id = newId,
+                        message = "Harcama başarıyla eklendi"
+                    }
+                );
             }
-
-            // Foreign key constraint hatası yakalanırsa, kullanıcıya anlamlı bir mesaj döndürülür
+            // Foreign key constraint hatası yakalanırsa kullanıcıya anlamlı bir mesaj döndürülür
             catch (PostgresException ex) when (ex.SqlState == "23503")
             {
                 return Results.BadRequest(new
                 {
-                    message = "Gönderilen UserId, CategoryId veya PaymentMethodId geçerli değil"
+                    message = "Gönderilen CategoryId veya PaymentMethodId geçerli değil"
                 });
             }
             // Diğer beklenmeyen hatalar için genel bir hata mesajı döndürülür
@@ -228,12 +257,15 @@ public static class ExpenseEndpoints
                     "Harcama eklenirken beklenmeyen bir hata oluştu."
                 );
             }
-
         })
         .RequireAuthorization();
 
         // ID ile bir harcamayı veritabanında güncelleyen endpoint
-        app.MapPut("/api/expenses/{id}", async (int id, ExpenseRequest expense, IConfiguration configuration, ClaimsPrincipal user) =>
+        app.MapPut("/api/expenses/{id}", async (
+            int id,
+            ExpenseRequest expense,
+            IConfiguration configuration,
+            ClaimsPrincipal user) =>
         {
             var userIdValue =
                 user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -242,6 +274,7 @@ public static class ExpenseEndpoints
             {
                 return Results.Unauthorized();
             }
+
             if (expense.Amount <= 0 ||
                 expense.CategoryId <= 0 ||
                 expense.PaymentMethodId <= 0)
@@ -263,28 +296,28 @@ public static class ExpenseEndpoints
             try
             {
                 var connectionString =
-                configuration.GetConnectionString("DefaultConnection");
+                    configuration.GetConnectionString("DefaultConnection");
 
                 await using var connection =
-                            new NpgsqlConnection(connectionString);
+                    new NpgsqlConnection(connectionString);
 
                 await connection.OpenAsync();
 
                 var sql = """
-                UPDATE expenses
-                SET user_id = @userId,
-                category_id = @categoryId,
-                amount = @amount,
-                date = @date,
-                place = @place,
-                description = @description,
-                payment_method_id = @paymentMethodId
-                WHERE id = @id
-                AND user_id = @userId;
-                """;
+                    UPDATE expenses
+                    SET
+                        category_id = @categoryId,
+                        amount = @amount,
+                        date = @date,
+                        place = @place,
+                        description = @description,
+                        payment_method_id = @paymentMethodId
+                    WHERE id = @id
+                      AND user_id = @userId;
+                    """;
 
                 await using var command =
-                                new NpgsqlCommand(sql, connection);
+                    new NpgsqlCommand(sql, connection);
 
                 command.Parameters.AddWithValue("id", id);
                 command.Parameters.AddWithValue("userId", userId);
@@ -305,6 +338,7 @@ public static class ExpenseEndpoints
                         message = "Harcama bulunamadı"
                     });
                 }
+
                 return Results.Ok(new
                 {
                     message = "Harcama başarıyla güncellendi"
@@ -314,7 +348,7 @@ public static class ExpenseEndpoints
             {
                 return Results.BadRequest(new
                 {
-                    message = "Gönderilen UserId, CategoryId veya PaymentMethodId geçerli değil"
+                    message = "Gönderilen CategoryId veya PaymentMethodId geçerli değil"
                 });
             }
             catch
@@ -327,9 +361,11 @@ public static class ExpenseEndpoints
         .RequireAuthorization();
 
         // ID ile bir harcamayı veritabanından silen endpoint
-        app.MapDelete("/api/expenses/{id}", async (int id, IConfiguration configuration, ClaimsPrincipal user) =>
+        app.MapDelete("/api/expenses/{id}", async (
+            int id,
+            IConfiguration configuration,
+            ClaimsPrincipal user) =>
         {
-
             if (id <= 0)
             {
                 return Results.BadRequest(new
@@ -337,6 +373,7 @@ public static class ExpenseEndpoints
                     message = "Id 0'dan büyük olmalıdır"
                 });
             }
+
             var userIdValue =
                 user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
@@ -344,30 +381,32 @@ public static class ExpenseEndpoints
             {
                 return Results.Unauthorized();
             }
+
             try
             {
                 var connectionString =
-                configuration.GetConnectionString("DefaultConnection");
+                    configuration.GetConnectionString("DefaultConnection");
 
                 await using var connection =
-                            new NpgsqlConnection(connectionString);
+                    new NpgsqlConnection(connectionString);
 
                 await connection.OpenAsync();
 
                 var sql = """
-                DELETE FROM expenses
-                WHERE id = @id
-                    AND user_id = @userId;
-                """;
+                    DELETE FROM expenses
+                    WHERE id = @id
+                      AND user_id = @userId;
+                    """;
 
                 await using var command =
-                                new NpgsqlCommand(sql, connection);
+                    new NpgsqlCommand(sql, connection);
 
                 command.Parameters.AddWithValue("id", id);
                 command.Parameters.AddWithValue("userId", userId);
 
                 var affectedRows =
                     await command.ExecuteNonQueryAsync();
+
                 if (affectedRows == 0)
                 {
                     return Results.NotFound(new
@@ -387,22 +426,7 @@ public static class ExpenseEndpoints
                     "Harcama silinirken beklenmeyen bir hata oluştu."
                 );
             }
-
-
         })
         .RequireAuthorization();
-
-
-
     }
-
-
-
-
-
-
-
-
-
-
 }
