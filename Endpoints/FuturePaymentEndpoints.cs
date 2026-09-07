@@ -1,6 +1,6 @@
 using Npgsql;
-using System.Security.Claims;
 using PersonalFinanceTracker.Api.Models;
+using System.Security.Claims;
 
 namespace PersonalFinanceTracker.Api.Endpoints;
 
@@ -8,27 +8,29 @@ public static class FuturePaymentEndpoints
 {
     public static void MapFuturePaymentEndpoints(this WebApplication app)
     {
-        app.MapGet("/api/future-payments", async (IConfiguration configuration, ClaimsPrincipal user) =>
+        app.MapGet("/api/future-payments", async (
+            IConfiguration configuration,
+            ClaimsPrincipal user) =>
+        {
+            var userIdValue =
+                user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (!int.TryParse(userIdValue, out var userId))
             {
-                var userIdValue =
-                    user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                return Results.Unauthorized();
+            }
 
-                if (!int.TryParse(userIdValue, out var userId))
-                {
-                    return Results.Unauthorized();
-                }
+            try
+            {
+                var connectionString =
+                    configuration.GetConnectionString("DefaultConnection");
 
-                try
-                {
-                    var connectionString =
-                        configuration.GetConnectionString("DefaultConnection");
+                await using var connection =
+                    new NpgsqlConnection(connectionString);
 
-                    await using var connection =
-                        new NpgsqlConnection(connectionString);
+                await connection.OpenAsync();
 
-                    await connection.OpenAsync();
-
-                    var sql = """
+                var sql = """
                     SELECT
                         id,
                         user_id,
@@ -43,144 +45,65 @@ public static class FuturePaymentEndpoints
                     ORDER BY planned_date;
                     """;
 
-                    await using var command =
-                        new NpgsqlCommand(sql, connection);
+                await using var command =
+                    new NpgsqlCommand(sql, connection);
 
-                    command.Parameters.AddWithValue("userId", userId);
+                command.Parameters.AddWithValue("userId", userId);
 
-                    await using var reader =
-                        await command.ExecuteReaderAsync();
+                await using var reader =
+                    await command.ExecuteReaderAsync();
 
-                    var futurePayments =
-                        new List<FuturePaymentResponse>();
+                var futurePayments =
+                    new List<FuturePaymentResponse>();
 
-                    while (await reader.ReadAsync())
-                    {
-                        futurePayments.Add(
-                            new FuturePaymentResponse(
-                                reader.GetInt32(0),
-                                reader.GetInt32(1),
-                                reader.GetInt32(2),
-                                reader.GetDecimal(3),
-                                DateOnly.FromDateTime(reader.GetDateTime(4)),
-                                reader.GetString(5),
-                                reader.IsDBNull(6) ? null : reader.GetString(6),
-                                reader.GetInt32(7)
-                            )
-                        );
-                    }
-
-                    return Results.Ok(futurePayments);
-                }
-                catch
+                while (await reader.ReadAsync())
                 {
-                    return Results.Problem(
-                        "Gelecek ödemeler getirilirken beklenmeyen bir hata oluştu."
+                    futurePayments.Add(
+                        new FuturePaymentResponse(
+                            reader.GetInt32(0),
+                            reader.GetInt32(1),
+                            reader.GetInt32(2),
+                            reader.GetDecimal(3),
+                            DateOnly.FromDateTime(reader.GetDateTime(4)),
+                            reader.GetString(5),
+                            reader.IsDBNull(6) ? null : reader.GetString(6),
+                            reader.GetInt32(7)
+                        )
                     );
                 }
-            })
-    .RequireAuthorization();
 
-        app.MapGet("/api/future-payments/{id}", async (int id, IConfiguration configuration, ClaimsPrincipal user) =>
-    {
-        if (id <= 0)
-        {
-            return Results.BadRequest(new
+                return Results.Ok(futurePayments);
+            }
+            catch
             {
-                message = "Id 0'dan büyük olmalıdır"
-            });
-        }
+                return Results.Problem(
+                    "Gelecek ödemeler getirilirken beklenmeyen bir hata oluştu."
+                );
+            }
+        })
+        .RequireAuthorization();
 
-        var userIdValue =
-            user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-        if (!int.TryParse(userIdValue, out var userId))
+        app.MapGet("/api/future-payments/{id}", async (
+            int id,
+            IConfiguration configuration,
+            ClaimsPrincipal user) =>
         {
-            return Results.Unauthorized();
-        }
-
-        try
-        {
-            var connectionString =
-                configuration.GetConnectionString("DefaultConnection");
-
-            await using var connection =
-                new NpgsqlConnection(connectionString);
-
-            await connection.OpenAsync();
-
-            var sql = """
-            SELECT
-                id,
-                user_id,
-                category_id,
-                amount,
-                planned_date,
-                status,
-                importance_level,
-                payment_method_id
-            FROM future_payments
-            WHERE id = @id
-              AND user_id = @userId;
-            """;
-
-            await using var command =
-                new NpgsqlCommand(sql, connection);
-
-            command.Parameters.AddWithValue("id", id);
-            command.Parameters.AddWithValue("userId", userId);
-
-            await using var reader =
-                await command.ExecuteReaderAsync();
-
-            if (!await reader.ReadAsync())
+            if (id <= 0)
             {
-                return Results.NotFound(new
+                return Results.BadRequest(new
                 {
-                    message = "Gelecek ödeme bulunamadı"
+                    message = "Id 0'dan büyük olmalıdır"
                 });
             }
 
-            var futurePayment = new FuturePaymentResponse(
-                reader.GetInt32(0),
-                reader.GetInt32(1),
-                reader.GetInt32(2),
-                reader.GetDecimal(3),
-                DateOnly.FromDateTime(reader.GetDateTime(4)),
-                reader.GetString(5),
-                reader.IsDBNull(6) ? null : reader.GetString(6),
-                reader.GetInt32(7)
-            );
-
-            return Results.Ok(futurePayment);
-        }
-        catch
-        {
-            return Results.Problem(
-                "Gelecek ödeme getirilirken beklenmeyen bir hata oluştu."
-            );
-        }
-    })
-    .RequireAuthorization();
-
-        app.MapPost("/api/future-payments", async (FuturePaymentRequest request, IConfiguration configuration, ClaimsPrincipal user) =>
-        {
             var userIdValue =
-            user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             if (!int.TryParse(userIdValue, out var userId))
             {
                 return Results.Unauthorized();
             }
-            if (request.Amount <= 0 ||
-            request.CategoryId <= 0 ||
-            request.PaymentMethodId <= 0)
-            {
-                return Results.BadRequest(new
-                {
-                    message = "Tutar, CategoryId ve PaymentMethodId 0'dan büyük olmalıdır"
-                });
-            }
+
             try
             {
                 var connectionString =
@@ -192,12 +115,99 @@ public static class FuturePaymentEndpoints
                 await connection.OpenAsync();
 
                 var sql = """
-                INSERT INTO future_payments
-                    (user_id, category_id, amount, planned_date, status, importance_level, payment_method_id)
-                VALUES
-                    (@userId, @categoryId, @amount, @plannedDate, @status, @importanceLevel, @paymentMethodId)
-                RETURNING id;
-                """;
+                    SELECT
+                        id,
+                        user_id,
+                        category_id,
+                        amount,
+                        planned_date,
+                        status,
+                        importance_level,
+                        payment_method_id
+                    FROM future_payments
+                    WHERE id = @id
+                      AND user_id = @userId;
+                    """;
+
+                await using var command =
+                    new NpgsqlCommand(sql, connection);
+
+                command.Parameters.AddWithValue("id", id);
+                command.Parameters.AddWithValue("userId", userId);
+
+                await using var reader =
+                    await command.ExecuteReaderAsync();
+
+                if (!await reader.ReadAsync())
+                {
+                    return Results.NotFound(new
+                    {
+                        message = "Gelecek ödeme bulunamadı"
+                    });
+                }
+
+                var futurePayment = new FuturePaymentResponse(
+                    reader.GetInt32(0),
+                    reader.GetInt32(1),
+                    reader.GetInt32(2),
+                    reader.GetDecimal(3),
+                    DateOnly.FromDateTime(reader.GetDateTime(4)),
+                    reader.GetString(5),
+                    reader.IsDBNull(6) ? null : reader.GetString(6),
+                    reader.GetInt32(7)
+                );
+
+                return Results.Ok(futurePayment);
+            }
+            catch
+            {
+                return Results.Problem(
+                    "Gelecek ödeme getirilirken beklenmeyen bir hata oluştu."
+                );
+            }
+        })
+        .RequireAuthorization();
+
+        app.MapPost("/api/future-payments", async (
+            FuturePaymentRequest request,
+            IConfiguration configuration,
+            ClaimsPrincipal user) =>
+        {
+            var userIdValue =
+                user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (!int.TryParse(userIdValue, out var userId))
+            {
+                return Results.Unauthorized();
+            }
+
+            if (request.Amount <= 0 ||
+                request.CategoryId <= 0 ||
+                request.PaymentMethodId <= 0)
+            {
+                return Results.BadRequest(new
+                {
+                    message = "Tutar, CategoryId ve PaymentMethodId 0'dan büyük olmalıdır"
+                });
+            }
+
+            try
+            {
+                var connectionString =
+                    configuration.GetConnectionString("DefaultConnection");
+
+                await using var connection =
+                    new NpgsqlConnection(connectionString);
+
+                await connection.OpenAsync();
+
+                var sql = """
+                    INSERT INTO future_payments
+                        (user_id, category_id, amount, planned_date, status, importance_level, payment_method_id)
+                    VALUES
+                        (@userId, @categoryId, @amount, @plannedDate, @status, @importanceLevel, @paymentMethodId)
+                    RETURNING id;
+                    """;
 
                 await using var command =
                     new NpgsqlCommand(sql, connection);
@@ -211,7 +221,10 @@ public static class FuturePaymentEndpoints
                     "importanceLevel",
                     (object?)request.ImportanceLevel ?? DBNull.Value
                 );
-                command.Parameters.AddWithValue("paymentMethodId", request.PaymentMethodId);
+                command.Parameters.AddWithValue(
+                    "paymentMethodId",
+                    request.PaymentMethodId
+                );
 
                 var newId =
                     Convert.ToInt32(await command.ExecuteScalarAsync());
@@ -239,171 +252,179 @@ public static class FuturePaymentEndpoints
                 );
             }
         })
-    .RequireAuthorization();
+        .RequireAuthorization();
 
-        app.MapPut("/api/future-payments/{id}", async (int id, FuturePaymentRequest request, IConfiguration configuration, ClaimsPrincipal user) =>
-    {
-        if (id <= 0)
+        app.MapPut("/api/future-payments/{id}", async (
+            int id,
+            FuturePaymentRequest request,
+            IConfiguration configuration,
+            ClaimsPrincipal user) =>
         {
-            return Results.BadRequest(new
+            if (id <= 0)
             {
-                message = "Id 0'dan büyük olmalıdır"
-            });
-        }
-
-        var userIdValue =
-        user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-        if (!int.TryParse(userIdValue, out var userId))
-        {
-            return Results.Unauthorized();
-        }
-        if (request.Amount <= 0 ||
-        request.CategoryId <= 0 ||
-        request.PaymentMethodId <= 0)
-        {
-            return Results.BadRequest(new
-            {
-                message = "Tutar, CategoryId ve PaymentMethodId 0'dan büyük olmalıdır"
-            });
-        }
-        try
-        {
-            var connectionString =
-                configuration.GetConnectionString("DefaultConnection");
-
-            await using var connection =
-                new NpgsqlConnection(connectionString);
-
-            await connection.OpenAsync();
-
-            var sql = """
-            UPDATE future_payments
-            SET
-                category_id = @categoryId,
-                amount = @amount,
-                planned_date = @plannedDate,
-                status = @status,
-                importance_level = @importanceLevel,
-                payment_method_id = @paymentMethodId
-            WHERE id = @id
-            AND user_id = @userId;
-            """;
-
-            await using var command =
-                new NpgsqlCommand(sql, connection);
-
-            command.Parameters.AddWithValue("id", id);
-            command.Parameters.AddWithValue("userId", userId);
-            command.Parameters.AddWithValue("categoryId", request.CategoryId);
-            command.Parameters.AddWithValue("amount", request.Amount);
-            command.Parameters.AddWithValue("plannedDate", request.PlannedDate);
-            command.Parameters.AddWithValue("status", request.Status);
-            command.Parameters.AddWithValue(
-                "importanceLevel",
-                (object?)request.ImportanceLevel ?? DBNull.Value
-            );
-            command.Parameters.AddWithValue(
-                "paymentMethodId",
-                request.PaymentMethodId
-            );
-
-            var affectedRows =
-                await command.ExecuteNonQueryAsync();
-
-            if (affectedRows == 0)
-            {
-                return Results.NotFound(new
+                return Results.BadRequest(new
                 {
-                    message = "Gelecek ödeme bulunamadı"
+                    message = "Id 0'dan büyük olmalıdır"
                 });
             }
 
-            return Results.Ok(new
+            var userIdValue =
+                user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (!int.TryParse(userIdValue, out var userId))
             {
-                message = "Gelecek ödeme başarıyla güncellendi"
-            });
-        }
-        catch (PostgresException ex) when (ex.SqlState == "23503")
-        {
-            return Results.BadRequest(new
+                return Results.Unauthorized();
+            }
+
+            if (request.Amount <= 0 ||
+                request.CategoryId <= 0 ||
+                request.PaymentMethodId <= 0)
             {
-                message = "Gönderilen CategoryId veya PaymentMethodId geçerli değil"
-            });
-        }
-        catch
-        {
-            return Results.Problem(
-                "Gelecek ödeme güncellenirken beklenmeyen bir hata oluştu."
-            );
-        }
-
-    })
-    .RequireAuthorization();
-
-        app.MapDelete("/api/future-payments/{id}", async (int id, IConfiguration configuration, ClaimsPrincipal user) =>
-    {
-        if (id <= 0)
-        {
-            return Results.BadRequest(new
-            {
-                message = "Id 0'dan büyük olmalıdır"
-            });
-        }
-
-        var userIdValue =
-        user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-        if (!int.TryParse(userIdValue, out var userId))
-        {
-            return Results.Unauthorized();
-        }
-
-        try
-        {
-            var connectionString =
-                configuration.GetConnectionString("DefaultConnection");
-
-            await using var connection =
-                new NpgsqlConnection(connectionString);
-
-            await connection.OpenAsync();
-
-            var sql = """
-            DELETE FROM future_payments
-            WHERE id = @id
-            AND user_id = @userId;
-            """;
-
-            await using var command =
-                new NpgsqlCommand(sql, connection);
-
-            command.Parameters.AddWithValue("id", id);
-            command.Parameters.AddWithValue("userId", userId);
-
-            var affectedRows =
-                await command.ExecuteNonQueryAsync();
-
-            if (affectedRows == 0)
-            {
-                return Results.NotFound(new
+                return Results.BadRequest(new
                 {
-                    message = "Gelecek ödeme bulunamadı"
+                    message = "Tutar, CategoryId ve PaymentMethodId 0'dan büyük olmalıdır"
                 });
             }
 
-            return Results.Ok(new
+            try
             {
-                message = "Gelecek ödeme başarıyla silindi"
-            });
-        }
-        catch
+                var connectionString =
+                    configuration.GetConnectionString("DefaultConnection");
+
+                await using var connection =
+                    new NpgsqlConnection(connectionString);
+
+                await connection.OpenAsync();
+
+                var sql = """
+                    UPDATE future_payments
+                    SET
+                        category_id = @categoryId,
+                        amount = @amount,
+                        planned_date = @plannedDate,
+                        status = @status,
+                        importance_level = @importanceLevel,
+                        payment_method_id = @paymentMethodId
+                    WHERE id = @id
+                      AND user_id = @userId;
+                    """;
+
+                await using var command =
+                    new NpgsqlCommand(sql, connection);
+
+                command.Parameters.AddWithValue("id", id);
+                command.Parameters.AddWithValue("userId", userId);
+                command.Parameters.AddWithValue("categoryId", request.CategoryId);
+                command.Parameters.AddWithValue("amount", request.Amount);
+                command.Parameters.AddWithValue("plannedDate", request.PlannedDate);
+                command.Parameters.AddWithValue("status", request.Status);
+                command.Parameters.AddWithValue(
+                    "importanceLevel",
+                    (object?)request.ImportanceLevel ?? DBNull.Value
+                );
+                command.Parameters.AddWithValue(
+                    "paymentMethodId",
+                    request.PaymentMethodId
+                );
+
+                var affectedRows =
+                    await command.ExecuteNonQueryAsync();
+
+                if (affectedRows == 0)
+                {
+                    return Results.NotFound(new
+                    {
+                        message = "Gelecek ödeme bulunamadı"
+                    });
+                }
+
+                return Results.Ok(new
+                {
+                    message = "Gelecek ödeme başarıyla güncellendi"
+                });
+            }
+            catch (PostgresException ex) when (ex.SqlState == "23503")
+            {
+                return Results.BadRequest(new
+                {
+                    message = "Gönderilen CategoryId veya PaymentMethodId geçerli değil"
+                });
+            }
+            catch
+            {
+                return Results.Problem(
+                    "Gelecek ödeme güncellenirken beklenmeyen bir hata oluştu."
+                );
+            }
+        })
+        .RequireAuthorization();
+
+        app.MapDelete("/api/future-payments/{id}", async (
+            int id,
+            IConfiguration configuration,
+            ClaimsPrincipal user) =>
         {
-            return Results.Problem(
-                "Gelecek ödeme silinirken beklenmeyen bir hata oluştu."
-            );
-        }
-    })
-    .RequireAuthorization();
+            if (id <= 0)
+            {
+                return Results.BadRequest(new
+                {
+                    message = "Id 0'dan büyük olmalıdır"
+                });
+            }
+
+            var userIdValue =
+                user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (!int.TryParse(userIdValue, out var userId))
+            {
+                return Results.Unauthorized();
+            }
+
+            try
+            {
+                var connectionString =
+                    configuration.GetConnectionString("DefaultConnection");
+
+                await using var connection =
+                    new NpgsqlConnection(connectionString);
+
+                await connection.OpenAsync();
+
+                var sql = """
+                    DELETE FROM future_payments
+                    WHERE id = @id
+                      AND user_id = @userId;
+                    """;
+
+                await using var command =
+                    new NpgsqlCommand(sql, connection);
+
+                command.Parameters.AddWithValue("id", id);
+                command.Parameters.AddWithValue("userId", userId);
+
+                var affectedRows =
+                    await command.ExecuteNonQueryAsync();
+
+                if (affectedRows == 0)
+                {
+                    return Results.NotFound(new
+                    {
+                        message = "Gelecek ödeme bulunamadı"
+                    });
+                }
+
+                return Results.Ok(new
+                {
+                    message = "Gelecek ödeme başarıyla silindi"
+                });
+            }
+            catch
+            {
+                return Results.Problem(
+                    "Gelecek ödeme silinirken beklenmeyen bir hata oluştu."
+                );
+            }
+        })
+        .RequireAuthorization();
     }
 }
