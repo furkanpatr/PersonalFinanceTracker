@@ -146,6 +146,21 @@ Run the API with:
 dotnet run
 ```
 
+## Database Setup
+
+This project uses PostgreSQL.
+
+Before running the API, create a PostgreSQL database and store the connection string using .NET User Secrets.
+
+Example:
+```bash
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "YOUR_CONNECTION_STRING"
+```
+
+The database schema is currently created manually.
+
+Migration support will be added in a future update.
+
 ## Planned Features
 
 - Expense reports and summaries
