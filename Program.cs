@@ -9,28 +9,44 @@ var builder = WebApplication.CreateBuilder(args);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
+// JWT secret key'i uygulama ayarlarından alır.
 var jwtKey = builder.Configuration["Jwt:Key"];
-    builder.Services
+
+// JWT Bearer authentication ayarlarını uygulamaya ekler.
+builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.TokenValidationParameters = new TokenValidationParameters
         {
+            // Local geliştirme aşamasında issuer kontrolü kapalı.
             ValidateIssuer = false,
+
+            // Local geliştirme aşamasında audience kontrolü kapalı.
             ValidateAudience = false,
+
+            // Token'ın süresinin dolup dolmadığını kontrol eder.
             ValidateLifetime = true,
+
+            // Token'ın doğru secret key ile imzalanıp imzalanmadığını kontrol eder.
             ValidateIssuerSigningKey = true,
 
+            // JWT token'larının doğrulanmasında kullanılacak secret key.
             IssuerSigningKey = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(jwtKey!)
             )
         };
     });
 
-    builder.Services.AddAuthorization();
+// Yetkilendirme sistemini uygulamaya ekler.
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
+
+// Gelen isteklerde kullanıcının kimliğini JWT üzerinden doğrular.
 app.UseAuthentication();
+
+// Doğrulanan kullanıcının endpoint'e erişim yetkisini kontrol eder.
 app.UseAuthorization();
 
 // Configure the HTTP request pipeline.
@@ -39,44 +55,13 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-// Ana endpoint
-app.MapGet("/", () =>
-{
-    return "Personal Finance Tracker API çalışıyor";
-});
-
-// API durumunu kontrol eden endpoint
-app.MapGet("/api/status", () =>
-{
-    return "API durumu: Aktif";
-});
-
-// Uygulama hakkında temel bilgileri döndüren endpoint
-app.MapGet("/api/info", () =>
-{
-    return new
-    {
-        status = "Aktif",
-        uygulama = "Personal Finance Tracker",
-        surum = "1.0"
-    };
-});
-
-// ID ile kullanıcı bilgisi istemek için kullanılan endpoint
-app.MapGet("/api/users/{id}", (int id) =>
-{
-    return $"İstenen kullanıcı ID: {id}";
-});
-
-// Durum ve minimum tutara göre gelecek ödemeleri filtreleyen endpoint
-app.MapGet("/api/future-payments", (string status, decimal minAmount) =>
-{
-    return $"Durum: {status}, Minimum tutar: {minAmount}";
-});
-
-
 // Expense endpoint'lerini uygulamaya ekler.
 app.MapExpenseEndpoints();
+
 // Authentication işlemlerine ait endpoint'leri uygulamaya ekler.
 app.MapAuthEndpoints();
+
+// Future payment işlemlerine ait endpoint'leri uygulamaya kaydeder.
+app.MapFuturePaymentEndpoints();
+
 app.Run();
