@@ -47,6 +47,15 @@ The project is built with ASP.NET Core and PostgreSQL and focuses on secure, use
 - Input validation
 - Foreign key error handling
 
+### Reports
+
+- Financial summary
+- Category-based expense reports
+- Monthly expense comparison
+- Weekly expense comparison
+- Future payment status reports
+- Custom date range reports
+
 ## Security
 
 - Passwords are stored as hashes
@@ -83,6 +92,17 @@ GET    /api/future-payments/{id}
 POST   /api/future-payments
 PUT    /api/future-payments/{id}
 DELETE /api/future-payments/{id}
+```
+
+### Reports
+
+```text
+GET /api/reports/summary
+GET /api/reports/categories
+GET /api/reports/monthly
+GET /api/reports/weekly
+GET /api/reports/future-payments/status
+GET /api/reports/range?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
 ```
 
 ## Project Structure

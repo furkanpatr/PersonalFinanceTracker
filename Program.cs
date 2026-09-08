@@ -64,4 +64,7 @@ app.MapAuthEndpoints();
 // Future payment işlemlerine ait endpoint'leri uygulamaya kaydeder.
 app.MapFuturePaymentEndpoints();
 
+// Report işlemlerine ait endpoint'leri uygulamaya kaydeder.
+app.MapReportEndpoints();
+
 app.Run();
