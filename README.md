@@ -113,6 +113,7 @@ PersonalFinanceTracker.Api/
 │   ├── AuthEndpoints.cs
 │   ├── ExpenseEndpoints.cs
 │   └── FuturePaymentEndpoints.cs
+│   └── ReportEndpoints.cs
 │
 ├── Models/
 │   ├── ExpenseRequest.cs
@@ -183,11 +184,12 @@ Migration support will be added in a future update.
 
 ## Planned Features
 
-- Expense reports and summaries
-- Category-based spending reports
-- Monthly and weekly financial summaries
+- Income tracking
+- Category-based budget limits
+- Recurring payments
+- Financial discipline score
 - Automated tests
-- Database setup scripts
+- Database setup scripts and migration support
 - Docker support
 - AWS deployment
 - CI/CD
