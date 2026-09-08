@@ -67,4 +67,7 @@ app.MapFuturePaymentEndpoints();
 // Report işlemlerine ait endpoint'leri uygulamaya kaydeder.
 app.MapReportEndpoints();
 
+// Income işlemlerine ait endpoint'leri uygulamaya kaydeder.
+app.MapIncomeEndpoints();
+
 app.Run();

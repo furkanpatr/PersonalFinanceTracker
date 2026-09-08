@@ -1,6 +1,6 @@
 # Personal Finance Tracker
 
-A backend API project for managing personal expenses and future payments.
+A backend API project for managing personal expenses, income, and future payments.
 
 The project is built with ASP.NET Core and PostgreSQL and focuses on secure, user-scoped financial data management.
 
@@ -34,6 +34,17 @@ The project is built with ASP.NET Core and PostgreSQL and focuses on secure, use
 - Input validation
 - Error handling
 
+### Income Tracking
+
+- Get all income records
+- Create income
+- Update income
+- Delete income
+- Income category support
+- User-scoped income access
+- Input validation
+- Foreign key error handling
+
 ### Future Payments
 
 - Get all future payments
@@ -61,7 +72,7 @@ The project is built with ASP.NET Core and PostgreSQL and focuses on secure, use
 - Passwords are stored as hashes
 - JWT tokens are used for authentication
 - User IDs are obtained from authenticated JWT claims
-- Users can only access their own expenses and future payments
+- Users can only access their own expenses, income records, and future payments
 - SQL queries use parameters to reduce SQL injection risk
 - Database connection strings and JWT secrets are kept outside source control
 
@@ -82,6 +93,15 @@ GET    /api/expenses/{id}
 POST   /api/expenses
 PUT    /api/expenses/{id}
 DELETE /api/expenses/{id}
+```
+
+### Income
+
+```text
+GET    /api/incomes
+POST   /api/incomes
+PUT    /api/incomes/{id}
+DELETE /api/incomes/{id}
 ```
 
 ### Future Payments
@@ -112,7 +132,8 @@ PersonalFinanceTracker.Api/
 ├── Endpoints/
 │   ├── AuthEndpoints.cs
 │   ├── ExpenseEndpoints.cs
-│   └── FuturePaymentEndpoints.cs
+│   ├── FuturePaymentEndpoints.cs
+│   ├── IncomeEndpoints.cs
 │   └── ReportEndpoints.cs
 │
 ├── Models/
@@ -120,6 +141,8 @@ PersonalFinanceTracker.Api/
 │   ├── ExpenseResponse.cs
 │   ├── FuturePaymentRequest.cs
 │   ├── FuturePaymentResponse.cs
+│   ├── IncomeRequest.cs
+│   ├── IncomeResponse.cs
 │   ├── LoginRequest.cs
 │   └── RegisterRequest.cs
 │
@@ -174,6 +197,7 @@ This project uses PostgreSQL.
 Before running the API, create a PostgreSQL database and store the connection string using .NET User Secrets.
 
 Example:
+
 ```bash
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" "YOUR_CONNECTION_STRING"
 ```
@@ -184,7 +208,6 @@ Migration support will be added in a future update.
 
 ## Planned Features
 
-- Income tracking
 - Category-based budget limits
 - Recurring payments
 - Financial discipline score
