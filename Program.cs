@@ -70,4 +70,7 @@ app.MapReportEndpoints();
 // Income işlemlerine ait endpoint'leri uygulamaya kaydeder.
 app.MapIncomeEndpoints();
 
+// Budget limit işlemlerine ait endpoint'leri uygulamaya kaydeder.
+app.MapBudgetLimitEndpoints();
+
 app.Run();
