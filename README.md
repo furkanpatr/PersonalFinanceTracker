@@ -1,6 +1,6 @@
 # Personal Finance Tracker
 
-A backend API project for managing personal expenses, income, and future payments.
+A backend API project for managing personal expenses, income, future payments, and monthly budget limits.
 
 The project is built with ASP.NET Core and PostgreSQL and focuses on secure, user-scoped financial data management.
 
@@ -45,6 +45,18 @@ The project is built with ASP.NET Core and PostgreSQL and focuses on secure, use
 - Input validation
 - Foreign key error handling
 
+### Budget Limits
+
+- Get all budget limits
+- Create budget limit
+- Update budget limit
+- Delete budget limit
+- Monthly category-based budget limits
+- User-scoped budget access
+- Duplicate budget prevention for the same category and period
+- Input validation
+- Foreign key error handling
+
 ### Future Payments
 
 - Get all future payments
@@ -72,7 +84,7 @@ The project is built with ASP.NET Core and PostgreSQL and focuses on secure, use
 - Passwords are stored as hashes
 - JWT tokens are used for authentication
 - User IDs are obtained from authenticated JWT claims
-- Users can only access their own expenses, income records, and future payments
+- Users can only access their own expenses, income records, future payments, and budget limits
 - SQL queries use parameters to reduce SQL injection risk
 - Database connection strings and JWT secrets are kept outside source control
 
@@ -102,6 +114,15 @@ GET    /api/incomes
 POST   /api/incomes
 PUT    /api/incomes/{id}
 DELETE /api/incomes/{id}
+```
+
+### Budget Limits
+
+```text
+GET    /api/budget-limits
+POST   /api/budget-limits
+PUT    /api/budget-limits/{id}
+DELETE /api/budget-limits/{id}
 ```
 
 ### Future Payments
@@ -134,6 +155,7 @@ PersonalFinanceTracker.Api/
 │   ├── ExpenseEndpoints.cs
 │   ├── FuturePaymentEndpoints.cs
 │   ├── IncomeEndpoints.cs
+│   ├── BudgetLimitEndpoints.cs
 │   └── ReportEndpoints.cs
 │
 ├── Models/
@@ -143,6 +165,8 @@ PersonalFinanceTracker.Api/
 │   ├── FuturePaymentResponse.cs
 │   ├── IncomeRequest.cs
 │   ├── IncomeResponse.cs
+│   ├── BudgetLimitRequest.cs
+│   ├── BudgetLimitResponse.cs
 │   ├── LoginRequest.cs
 │   └── RegisterRequest.cs
 │
@@ -208,7 +232,6 @@ Migration support will be added in a future update.
 
 ## Planned Features
 
-- Category-based budget limits
 - Recurring payments
 - Financial discipline score
 - Automated tests
