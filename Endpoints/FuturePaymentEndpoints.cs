@@ -191,6 +191,14 @@ public static class FuturePaymentEndpoints
                 });
             }
 
+            if (request.ImportanceLevel is not ("low" or "medium" or "high"))
+            {
+                return Results.BadRequest(new
+                {
+                    message = "ImportanceLevel low, medium veya high olmalıdır"
+                });
+            }
+
             try
             {
                 var connectionString =
@@ -205,7 +213,7 @@ public static class FuturePaymentEndpoints
                     INSERT INTO future_payments
                         (user_id, category_id, amount, planned_date, status, importance_level, payment_method_id)
                     VALUES
-                        (@userId, @categoryId, @amount, @plannedDate, @status, @importanceLevel, @paymentMethodId)
+                        (@userId, @categoryId, @amount, @plannedDate, 'pending', @importanceLevel, @paymentMethodId)
                     RETURNING id;
                     """;
 
@@ -216,15 +224,8 @@ public static class FuturePaymentEndpoints
                 command.Parameters.AddWithValue("categoryId", request.CategoryId);
                 command.Parameters.AddWithValue("amount", request.Amount);
                 command.Parameters.AddWithValue("plannedDate", request.PlannedDate);
-                command.Parameters.AddWithValue("status", request.Status);
-                command.Parameters.AddWithValue(
-                    "importanceLevel",
-                    (object?)request.ImportanceLevel ?? DBNull.Value
-                );
-                command.Parameters.AddWithValue(
-                    "paymentMethodId",
-                    request.PaymentMethodId
-                );
+                command.Parameters.AddWithValue("importanceLevel", request.ImportanceLevel);
+                command.Parameters.AddWithValue("paymentMethodId", request.PaymentMethodId);
 
                 var newId =
                     Convert.ToInt32(await command.ExecuteScalarAsync());
@@ -256,7 +257,7 @@ public static class FuturePaymentEndpoints
 
         app.MapPut("/api/future-payments/{id}", async (
             int id,
-            FuturePaymentRequest request,
+            FuturePaymentUpdateRequest request,
             IConfiguration configuration,
             ClaimsPrincipal user) =>
         {
@@ -286,6 +287,14 @@ public static class FuturePaymentEndpoints
                 });
             }
 
+            if (request.ImportanceLevel is not ("low" or "medium" or "high"))
+            {
+                return Results.BadRequest(new
+                {
+                    message = "ImportanceLevel low, medium veya high olmalıdır"
+                });
+            }
+
             try
             {
                 var connectionString =
@@ -301,8 +310,6 @@ public static class FuturePaymentEndpoints
                     SET
                         category_id = @categoryId,
                         amount = @amount,
-                        planned_date = @plannedDate,
-                        status = @status,
                         importance_level = @importanceLevel,
                         payment_method_id = @paymentMethodId
                     WHERE id = @id
@@ -316,16 +323,8 @@ public static class FuturePaymentEndpoints
                 command.Parameters.AddWithValue("userId", userId);
                 command.Parameters.AddWithValue("categoryId", request.CategoryId);
                 command.Parameters.AddWithValue("amount", request.Amount);
-                command.Parameters.AddWithValue("plannedDate", request.PlannedDate);
-                command.Parameters.AddWithValue("status", request.Status);
-                command.Parameters.AddWithValue(
-                    "importanceLevel",
-                    (object?)request.ImportanceLevel ?? DBNull.Value
-                );
-                command.Parameters.AddWithValue(
-                    "paymentMethodId",
-                    request.PaymentMethodId
-                );
+                command.Parameters.AddWithValue("importanceLevel", request.ImportanceLevel);
+                command.Parameters.AddWithValue("paymentMethodId", request.PaymentMethodId);
 
                 var affectedRows =
                     await command.ExecuteNonQueryAsync();
@@ -422,6 +421,273 @@ public static class FuturePaymentEndpoints
             {
                 return Results.Problem(
                     "Gelecek ödeme silinirken beklenmeyen bir hata oluştu."
+                );
+            }
+        })
+        .RequireAuthorization();
+
+        app.MapPatch("/api/future-payments/{id:int}/postpone", async (
+            int id,
+            FuturePaymentPostponeRequest request,
+            IConfiguration configuration,
+            ClaimsPrincipal user) =>
+        {
+            if (id <= 0)
+            {
+                return Results.BadRequest(new
+                {
+                    message = "Id geçerli olmalıdır"
+                });
+            }
+
+            var userIdValue =
+                user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (!int.TryParse(userIdValue, out var userId))
+            {
+                return Results.Unauthorized();
+            }
+
+            try
+            {
+                var connectionString =
+                    configuration.GetConnectionString("DefaultConnection");
+
+                await using var connection =
+                    new NpgsqlConnection(connectionString);
+
+                await connection.OpenAsync();
+
+                await using var transaction =
+                    await connection.BeginTransactionAsync();
+
+                var selectSql = """
+                    SELECT
+                        planned_date,
+                        importance_level,
+                        status
+                    FROM future_payments
+                    WHERE id = @id
+                    AND user_id = @userId;
+                    """;
+
+                await using var selectCommand =
+                    new NpgsqlCommand(selectSql, connection, transaction);
+
+                selectCommand.Parameters.AddWithValue("id", id);
+                selectCommand.Parameters.AddWithValue("userId", userId);
+
+                DateOnly oldPlannedDate;
+                string importanceLevel;
+                string status;
+
+                await using (var reader =
+                    await selectCommand.ExecuteReaderAsync())
+                {
+                    if (!await reader.ReadAsync())
+                    {
+                        return Results.NotFound(new
+                        {
+                            message = "Gelecek ödeme bulunamadı"
+                        });
+                    }
+
+                    oldPlannedDate = reader.GetFieldValue<DateOnly>(0);
+                    importanceLevel = reader.GetString(1);
+                    status = reader.GetString(2);
+                }
+
+                if (status == "paid")
+                {
+                    return Results.BadRequest(new
+                    {
+                        message = "Ödenmiş bir ödeme ertelenemez"
+                    });
+                }
+
+                if (request.NewPlannedDate <= oldPlannedDate)
+                {
+                    return Results.BadRequest(new
+                    {
+                        message = "Yeni ödeme tarihi mevcut ödeme tarihinden ileri olmalıdır"
+                    });
+                }
+                var historySql = """
+                    INSERT INTO future_payment_history
+                        (future_payment_id, user_id, action,
+                        old_planned_date, new_planned_date, importance_level)
+                    VALUES
+                        (@futurePaymentId, @userId, 'postponed',
+                        @oldPlannedDate, @newPlannedDate, @importanceLevel);
+                    """;
+
+                await using var historyCommand =
+                    new NpgsqlCommand(historySql, connection, transaction);
+
+                historyCommand.Parameters.AddWithValue("futurePaymentId", id);
+                historyCommand.Parameters.AddWithValue("userId", userId);
+                historyCommand.Parameters.AddWithValue("oldPlannedDate", oldPlannedDate);
+                historyCommand.Parameters.AddWithValue("newPlannedDate", request.NewPlannedDate);
+                historyCommand.Parameters.AddWithValue("importanceLevel", importanceLevel);
+
+                await historyCommand.ExecuteNonQueryAsync();
+
+                var updateSql = """
+                    UPDATE future_payments
+                    SET planned_date = @newPlannedDate
+                    WHERE id = @id
+                    AND user_id = @userId;
+                    """;
+
+                await using var updateCommand =
+                    new NpgsqlCommand(updateSql, connection, transaction);
+
+                updateCommand.Parameters.AddWithValue(
+                    "newPlannedDate", request.NewPlannedDate);
+
+                updateCommand.Parameters.AddWithValue("id", id);
+                updateCommand.Parameters.AddWithValue("userId", userId);
+
+                await updateCommand.ExecuteNonQueryAsync();
+
+                await transaction.CommitAsync();
+
+                return Results.Ok(new
+                {
+                    message = "Ödeme tarihi başarıyla ertelendi"
+                });
+            }
+            catch
+            {
+                return Results.Problem(
+                    "Ödeme ertelenirken beklenmeyen bir hata oluştu."
+                );
+            }
+        })
+        .RequireAuthorization();
+
+        app.MapPatch("/api/future-payments/{id:int}/pay", async (
+            int id,
+            IConfiguration configuration,
+            ClaimsPrincipal user) =>
+        {
+            if (id <= 0)
+            {
+                return Results.BadRequest(new
+                {
+                    message = "Id geçerli olmalıdır"
+                });
+            }
+
+            var userIdValue =
+                user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (!int.TryParse(userIdValue, out var userId))
+            {
+                return Results.Unauthorized();
+            }
+
+            try
+            {
+                var connectionString =
+                    configuration.GetConnectionString("DefaultConnection");
+
+                await using var connection =
+                    new NpgsqlConnection(connectionString);
+
+                await connection.OpenAsync();
+
+                await using var transaction =
+                    await connection.BeginTransactionAsync();
+
+                var selectSql = """
+                    SELECT
+                        planned_date,
+                        importance_level,
+                        status
+                    FROM future_payments
+                    WHERE id = @id
+                    AND user_id = @userId;
+                    """;
+
+                await using var selectCommand =
+                    new NpgsqlCommand(selectSql, connection, transaction);
+
+                selectCommand.Parameters.AddWithValue("id", id);
+                selectCommand.Parameters.AddWithValue("userId", userId);
+
+                DateOnly plannedDate;
+                string importanceLevel;
+                string status;
+
+                await using (var reader =
+                    await selectCommand.ExecuteReaderAsync())
+                {
+                    if (!await reader.ReadAsync())
+                    {
+                        return Results.NotFound(new
+                        {
+                            message = "Gelecek ödeme bulunamadı"
+                        });
+                    }
+
+                    plannedDate = reader.GetFieldValue<DateOnly>(0);
+                    importanceLevel = reader.GetString(1);
+                    status = reader.GetString(2);
+                }
+
+                if (status == "paid")
+                {
+                    return Results.BadRequest(new
+                    {
+                        message = "Ödeme zaten paid durumunda"
+                    });
+                }
+                var historySql = """
+                    INSERT INTO future_payment_history
+                        (future_payment_id, user_id, action,
+                        old_planned_date, new_planned_date, importance_level)
+                    VALUES
+                        (@futurePaymentId, @userId, 'paid',
+                        @oldPlannedDate, NULL, @importanceLevel);
+                    """;
+
+                await using var historyCommand =
+                    new NpgsqlCommand(historySql, connection, transaction);
+
+                historyCommand.Parameters.AddWithValue("futurePaymentId", id);
+                historyCommand.Parameters.AddWithValue("userId", userId);
+                historyCommand.Parameters.AddWithValue("oldPlannedDate", plannedDate);
+                historyCommand.Parameters.AddWithValue("importanceLevel", importanceLevel);
+
+                await historyCommand.ExecuteNonQueryAsync();
+
+                var updateSql = """
+                    UPDATE future_payments
+                    SET status = 'paid'
+                    WHERE id = @id
+                    AND user_id = @userId;
+                    """;
+
+                await using var updateCommand =
+                    new NpgsqlCommand(updateSql, connection, transaction);
+
+                updateCommand.Parameters.AddWithValue("id", id);
+                updateCommand.Parameters.AddWithValue("userId", userId);
+
+                await updateCommand.ExecuteNonQueryAsync();
+
+                await transaction.CommitAsync();
+
+                return Results.Ok(new
+                {
+                    message = "Ödeme başarıyla paid olarak işaretlendi"
+                });
+            }
+            catch
+            {
+                return Results.Problem(
+                    "Ödeme işaretlenirken beklenmeyen bir hata oluştu."
                 );
             }
         })
