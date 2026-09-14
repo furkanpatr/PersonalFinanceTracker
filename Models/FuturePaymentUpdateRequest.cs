@@ -1,9 +1,8 @@
 namespace PersonalFinanceTracker.Api.Models;
 
-public record FuturePaymentRequest(
+public record FuturePaymentUpdateRequest(
     int CategoryId,
     decimal Amount,
-    DateOnly PlannedDate,
     string ImportanceLevel,
     int PaymentMethodId
 );

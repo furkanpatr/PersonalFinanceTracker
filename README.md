@@ -95,7 +95,7 @@ The project is built with ASP.NET Core and PostgreSQL and focuses on secure, use
 - Passwords are stored as hashes
 - JWT tokens are used for authentication
 - User IDs are obtained from authenticated JWT claims
-- Users can only access their own expenses, income records, future payments, and budget limits
+- Users can only access their own expenses, income records, future payments, budget limits, and recurring payments
 - SQL queries use parameters to reduce SQL injection risk
 - Database connection strings and JWT secrets are kept outside source control
 
@@ -178,7 +178,8 @@ PersonalFinanceTracker.Api/
 │   ├── FuturePaymentEndpoints.cs
 │   ├── IncomeEndpoints.cs
 │   ├── BudgetLimitEndpoints.cs
-│   └── ReportEndpoints.cs
+│   ├── ReportEndpoints.cs
+│   └── RecurringPaymentEndpoints.cs
 │
 ├── Models/
 │   ├── ExpenseRequest.cs
@@ -190,7 +191,10 @@ PersonalFinanceTracker.Api/
 │   ├── BudgetLimitRequest.cs
 │   ├── BudgetLimitResponse.cs
 │   ├── LoginRequest.cs
-│   └── RegisterRequest.cs
+│   ├── RegisterRequest.cs
+│   ├── RecurringPaymentRequest.cs
+│   ├── RecurringPaymentResponse.cs
+│   └── RecurringPaymentStatusRequest.cs
 │
 ├── Program.cs
 └── appsettings.json

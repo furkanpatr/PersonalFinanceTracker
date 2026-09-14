@@ -96,6 +96,14 @@ public static class BudgetLimitEndpoints
                 });
             }
 
+            if (budget.Period.Day != 1)
+            {
+                return Results.BadRequest(new
+                {
+                    message = "Period ayın ilk günü olmalıdır"
+                });
+            }
+
             try
             {
                 var connectionString =
@@ -184,6 +192,14 @@ public static class BudgetLimitEndpoints
                 return Results.BadRequest(new
                 {
                     message = "Kategori ID ve bütçe tutarı 0'dan büyük olmalıdır"
+                });
+            }
+
+            if (budget.Period.Day != 1)
+            {
+                return Results.BadRequest(new
+                {
+                    message = "Period ayın ilk günü olmalıdır"
                 });
             }
 

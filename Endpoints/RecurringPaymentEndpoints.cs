@@ -529,16 +529,18 @@ public static class RecurringPaymentEndpoints
                     }
                 }
 
+                var createdCount = 0;
+
                 foreach (var payment in duePayments)
                 {
                     var insertSql = """
                         INSERT INTO future_payments
-                            (user_id, category_id, amount, planned_date,
+                            (user_id, category_id, amount, planned_date, original_due_date,
                             importance_level, payment_method_id, recurring_payment_id)
                         VALUES
-                            (@userId, @categoryId, @amount, @plannedDate,
+                            (@userId, @categoryId, @amount, @plannedDate, @originalDueDate,
                             @importanceLevel, @paymentMethodId, @recurringPaymentId)
-                        ON CONFLICT (recurring_payment_id, planned_date)
+                        ON CONFLICT (recurring_payment_id, original_due_date)
                         WHERE recurring_payment_id IS NOT NULL
                         DO NOTHING;
                         """;
@@ -553,8 +555,14 @@ public static class RecurringPaymentEndpoints
                     insertCommand.Parameters.AddWithValue("importanceLevel", payment.ImportanceLevel);
                     insertCommand.Parameters.AddWithValue("paymentMethodId", payment.PaymentMethodId);
                     insertCommand.Parameters.AddWithValue("recurringPaymentId", payment.Id);
+                    insertCommand.Parameters.AddWithValue("originalDueDate", payment.NextDueDate);
 
-                    await insertCommand.ExecuteNonQueryAsync();
+                    var insertedRows = await insertCommand.ExecuteNonQueryAsync();
+
+                    if (insertedRows > 0)
+                    {
+                        createdCount++;
+                    }
 
                     var newNextDueDate = payment.Frequency switch
                     {
@@ -584,7 +592,7 @@ public static class RecurringPaymentEndpoints
 
                 return Results.Ok(new
                 {
-                    processedCount = duePayments.Count,
+                    createdCount = createdCount,
                     message = "Vadesi gelen tekrarlayan ödemeler başarıyla işlendi"
                 });
             }
