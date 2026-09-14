@@ -56,6 +56,7 @@ The project is built with ASP.NET Core and PostgreSQL and focuses on secure, use
 - Duplicate budget prevention for the same category and period
 - Input validation
 - Foreign key error handling
+- Budget periods are normalized to the first day of the month
 
 ### Recurring Payments
 
@@ -64,9 +65,12 @@ The project is built with ASP.NET Core and PostgreSQL and focuses on secure, use
 - Importance level support
 - Active/inactive status management
 - JWT-protected and user-scoped endpoints
-- Automatic generation of due future payments
+- Due recurring payments can be processed into future payments
 - Duplicate prevention for generated future payments
 - Transaction-based processing
+- Generated future payments preserve their original due date
+- Duplicate prevention uses recurring payment and original due date
+- Due payment processing reports the actual number of created future payments
 
 ### Future Payments
 
@@ -80,6 +84,11 @@ The project is built with ASP.NET Core and PostgreSQL and focuses on secure, use
 - Importance level support
 - Input validation
 - Foreign key error handling
+- Future payments start with `pending` status
+- Payments can be postponed with history tracking
+- Payments can be marked as `paid` with history tracking
+- Payment status and importance levels use standardized values
+- Postpone and payment operations are transaction-based
 
 ### Reports
 
@@ -155,6 +164,8 @@ GET    /api/future-payments/{id}
 POST   /api/future-payments
 PUT    /api/future-payments/{id}
 DELETE /api/future-payments/{id}
+PATCH /api/future-payments/{id}/postpone
+PATCH /api/future-payments/{id}/pay
 ```
 
 ### Reports
@@ -194,7 +205,9 @@ PersonalFinanceTracker.Api/
 │   ├── RegisterRequest.cs
 │   ├── RecurringPaymentRequest.cs
 │   ├── RecurringPaymentResponse.cs
-│   └── RecurringPaymentStatusRequest.cs
+│   ├── RecurringPaymentStatusRequest.cs
+│   ├── FuturePaymentPostponeRequest.cs
+│   └── FuturePaymentUpdateRequest.cs
 │
 ├── Program.cs
 └── appsettings.json
