@@ -73,4 +73,7 @@ app.MapIncomeEndpoints();
 // Budget limit işlemlerine ait endpoint'leri uygulamaya kaydeder.
 app.MapBudgetLimitEndpoints();
 
+// Recurring payment işlemlerine ait endpoint'leri uygulamaya kaydeder.
+app.MapRecurringPaymentEndpoints();
+
 app.Run();

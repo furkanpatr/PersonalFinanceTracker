@@ -57,6 +57,17 @@ The project is built with ASP.NET Core and PostgreSQL and focuses on secure, use
 - Input validation
 - Foreign key error handling
 
+### Recurring Payments
+
+- Create, list, update and delete recurring payments
+- Weekly, monthly and yearly frequencies
+- Importance level support
+- Active/inactive status management
+- JWT-protected and user-scoped endpoints
+- Automatic generation of due future payments
+- Duplicate prevention for generated future payments
+- Transaction-based processing
+
 ### Future Payments
 
 - Get all future payments
@@ -123,6 +134,17 @@ GET    /api/budget-limits
 POST   /api/budget-limits
 PUT    /api/budget-limits/{id}
 DELETE /api/budget-limits/{id}
+```
+
+### Recurring Payments
+
+```text
+GET /api/recurring-payments
+POST /api/recurring-payments
+PUT /api/recurring-payments/{id}
+DELETE /api/recurring-payments/{id}
+PATCH /api/recurring-payments/{id}/status
+POST /api/recurring-payments/process-due
 ```
 
 ### Future Payments
@@ -232,7 +254,6 @@ Migration support will be added in a future update.
 
 ## Planned Features
 
-- Recurring payments
 - Financial discipline score
 - Automated tests
 - Database setup scripts and migration support
