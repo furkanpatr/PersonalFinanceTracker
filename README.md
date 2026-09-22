@@ -12,6 +12,8 @@ The project is built with ASP.NET Core and PostgreSQL and focuses on secure, use
 - Npgsql
 - REST API
 - JWT Authentication
+- xUnit
+- Microsoft.AspNetCore.Mvc.Testing
 
 ## Current Features
 
@@ -102,6 +104,31 @@ The project is built with ASP.NET Core and PostgreSQL and focuses on secure, use
 - 90-day payment behavior evaluation
 - Importance-weighted payment discipline scoring
 - Overdue future payment penalties
+
+## Automated Tests
+
+The project includes integration tests using xUnit and Microsoft.AspNetCore.Mvc.Testing.
+
+Tests run against a separate PostgreSQL test database to keep development data isolated.
+
+Current test coverage includes:
+
+- Authentication and JWT-protected endpoints
+- Expense CRUD and user-scoped access
+- Income CRUD and user-scoped access
+- Future payment operations
+- Recurring payment processing
+- Budget limit validation and user-scoped access
+- Financial discipline score calculations
+- Report calculations and user-scoped reporting
+- Input validation and foreign key error handling
+
+Current status:
+
+```text
+56 tests passed
+0 tests failed
+```
 
 ## Security
 
@@ -216,7 +243,21 @@ PersonalFinanceTracker.Api/
 │   └── FinancialDisciplineScoreResponse.cs
 │
 ├── Program.cs
-└── appsettings.json
+├── appsettings.json
+│
+└── tests/
+    └── PersonalFinanceTracker.Api.Tests/
+        ├── AuthIntegrationTests.cs
+        ├── BudgetLimitIntegrationTests.cs
+        ├── CustomWebApplicationFactory.cs
+        ├── ExpenseIntegrationTests.cs
+        ├── FinancialDisciplineIntegrationTests.cs
+        ├── FuturePaymentIntegrationTests.cs
+        ├── IncomeIntegrationTests.cs
+        ├── RecurringPaymentIntegrationTests.cs
+        ├── ReportIntegrationTests.cs
+        ├── SmokeTests.cs
+        └── TestAuthHelper.cs
 ```
 
 ## Authentication Flow
@@ -277,7 +318,6 @@ Migration support will be added in a future update.
 
 ## Planned Features
 
-- Automated tests
 - Database setup scripts and migration support
 - Docker support
 - AWS deployment
