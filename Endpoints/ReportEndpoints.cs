@@ -67,12 +67,12 @@ public static class ReportEndpoints
                     SELECT
                         COALESCE(SUM(amount), 0),
                         COALESCE(
-                            SUM(amount) FILTER (WHERE importance_level = 'Yüksek'),
+                            SUM(amount) FILTER (WHERE importance_level = 'high'),
                             0
                         )
                     FROM future_payments
                     WHERE user_id = @userId
-                        AND status = 'Bekliyor';
+                        AND status = 'pending';
                     """;
 
                 await using var futurePaymentsCommand =

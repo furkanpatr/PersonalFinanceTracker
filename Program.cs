@@ -77,3 +77,5 @@ app.MapBudgetLimitEndpoints();
 app.MapRecurringPaymentEndpoints();
 
 app.Run();
+
+public partial class Program { }
