@@ -1,5 +1,6 @@
 using Npgsql;
 using System.Security.Claims;
+using PersonalFinanceTracker.Api.Models;
 
 namespace PersonalFinanceTracker.Api.Endpoints;
 
@@ -492,6 +493,168 @@ public static class ReportEndpoints
             {
                 return Results.Problem(
                     "Tarih aralığı raporu oluşturulurken beklenmeyen bir hata oluştu."
+                );
+            }
+        })
+        .RequireAuthorization();
+
+        app.MapGet("/api/reports/financial-discipline-score", async (
+            IConfiguration configuration,
+            ClaimsPrincipal user) =>
+        {
+            var userIdValue =
+                user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (!int.TryParse(userIdValue, out var userId))
+            {
+                return Results.Unauthorized();
+            }
+
+            try
+            {
+                var connectionString =
+                    configuration.GetConnectionString("DefaultConnection");
+
+                await using var connection =
+                    new NpgsqlConnection(connectionString);
+
+                await connection.OpenAsync();
+
+                var historySql = """
+                    SELECT
+                        action,
+                        old_planned_date,
+                        importance_level,
+                        created_at
+                    FROM future_payment_history
+                    WHERE user_id = @userId
+                    AND created_at >= CURRENT_TIMESTAMP - INTERVAL '90 days'
+                    ORDER BY created_at DESC;
+                    """;
+
+                await using var historyCommand =
+                    new NpgsqlCommand(historySql, connection);
+
+                historyCommand.Parameters.AddWithValue("userId", userId);
+
+                var historyCount = 0;
+                var onTimePayments = 0;
+                var latePayments = 0;
+                var postponements = 0;
+                var score = 70;
+
+                await using (var reader =
+                    await historyCommand.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        historyCount++;
+
+                        var action = reader.GetString(0);
+                        var oldPlannedDate = reader.GetFieldValue<DateOnly>(1);
+                        var importanceLevel = reader.GetString(2);
+                        var createdAt = reader.GetDateTime(3);
+
+                        if (action == "postponed")
+                        {
+                            postponements++;
+
+                            score -= importanceLevel switch
+                            {
+                                "low" => 2,
+                                "medium" => 4,
+                                "high" => 7,
+                                _ => 0
+                            };
+                        }
+                        else if (action == "paid")
+                        {
+                            if (DateOnly.FromDateTime(createdAt) <= oldPlannedDate)
+                            {
+                                onTimePayments++;
+
+                                score += importanceLevel switch
+                                {
+                                    "low" => 3,
+                                    "medium" => 5,
+                                    "high" => 8,
+                                    _ => 0
+                                };
+                            }
+                            else
+                            {
+                                latePayments++;
+
+                                score -= importanceLevel switch
+                                {
+                                    "low" => 3,
+                                    "medium" => 6,
+                                    "high" => 10,
+                                    _ => 0
+                                };
+                            }
+                        }
+                    }
+                }
+                var overduePayments = 0;
+
+                var overdueSql = """
+                    SELECT importance_level
+                    FROM future_payments
+                    WHERE user_id = @userId
+                    AND status = 'pending'
+                    AND planned_date < CURRENT_DATE;
+                    """;
+
+                await using var overdueCommand =
+                    new NpgsqlCommand(overdueSql, connection);
+
+                overdueCommand.Parameters.AddWithValue("userId", userId);
+
+                await using (var overdueReader =
+                    await overdueCommand.ExecuteReaderAsync())
+                {
+                    while (await overdueReader.ReadAsync())
+                    {
+                        overduePayments++;
+
+                        var importanceLevel =
+                            overdueReader.GetString(0);
+
+                        score -= importanceLevel switch
+                        {
+                            "low" => 5,
+                            "medium" => 10,
+                            "high" => 15,
+                            _ => 0
+                        };
+                    }
+                }
+
+                if (historyCount == 0 && overduePayments == 0)
+                {
+                    return Results.Ok(new
+                    {
+                        message = "Financial discipline score için yeterli veri yok"
+                    });
+                }
+
+                score = Math.Clamp(score, 0, 100);
+
+                var response = new FinancialDisciplineScoreResponse(
+                    score,
+                    onTimePayments,
+                    latePayments,
+                    postponements,
+                    overduePayments
+                );
+
+                return Results.Ok(response);
+            }
+            catch
+            {
+                return Results.Problem(
+                    "Financial discipline score oluşturulurken beklenmeyen bir hata oluştu."
                 );
             }
         })

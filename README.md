@@ -98,6 +98,10 @@ The project is built with ASP.NET Core and PostgreSQL and focuses on secure, use
 - Weekly expense comparison
 - Future payment status reports
 - Custom date range reports
+- Financial discipline score
+- 90-day payment behavior evaluation
+- Importance-weighted payment discipline scoring
+- Overdue future payment penalties
 
 ## Security
 
@@ -177,6 +181,7 @@ GET /api/reports/monthly
 GET /api/reports/weekly
 GET /api/reports/future-payments/status
 GET /api/reports/range?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
+GET /api/reports/financial-discipline-score
 ```
 
 ## Project Structure
@@ -207,7 +212,8 @@ PersonalFinanceTracker.Api/
 │   ├── RecurringPaymentResponse.cs
 │   ├── RecurringPaymentStatusRequest.cs
 │   ├── FuturePaymentPostponeRequest.cs
-│   └── FuturePaymentUpdateRequest.cs
+│   ├── FuturePaymentUpdateRequest.cs
+│   └── FinancialDisciplineScoreResponse.cs
 │
 ├── Program.cs
 └── appsettings.json
@@ -271,7 +277,6 @@ Migration support will be added in a future update.
 
 ## Planned Features
 
-- Financial discipline score
 - Automated tests
 - Database setup scripts and migration support
 - Docker support
