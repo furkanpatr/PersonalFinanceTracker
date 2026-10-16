@@ -483,3 +483,6 @@ $RECYCLE.BIN/
 
 # Local API test files
 requests.http
+
+# Local VS Code settings
+.vscode/
