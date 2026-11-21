@@ -20,7 +20,7 @@ public class CustomWebApplicationFactory
             var connectionBuilder =
                 new NpgsqlConnectionStringBuilder(connectionString)
                 {
-                    Database = "personal_finance_tracker_test"
+                    Database = "personal_finance_tracker_automated_test"
                 };
 
             config.AddInMemoryCollection(new Dictionary<string, string?>

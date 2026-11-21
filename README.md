@@ -1,327 +1,154 @@
 # Personal Finance Tracker
 
-A backend API project for managing personal expenses, income, future payments, and monthly budget limits.
+A REST API for managing personal finances, built with **ASP.NET Core (.NET 10)** and **PostgreSQL**.
 
-The project is built with ASP.NET Core and PostgreSQL and focuses on secure, user-scoped financial data management.
+The project supports expense and income tracking, budget management, recurring payments, future payments, and financial reporting. Financial records are protected with JWT authentication and user-scoped access.
 
-## Technologies
+## Tech Stack
 
-- ASP.NET Core
-- C#
-- PostgreSQL
-- Npgsql
-- REST API
-- JWT Authentication
-- xUnit
-- Microsoft.AspNetCore.Mvc.Testing
+- **Backend:** C#, ASP.NET Core Minimal APIs (.NET 10)
+- **Database:** PostgreSQL, Npgsql
+- **Database Migrations:** DbUp
+- **Authentication:** JWT, password hashing
+- **Testing:** xUnit, ASP.NET Core Integration Testing
 
-## Current Features
+## Features
 
 ### Authentication
+- User registration and login
+- Password hashing and JWT authentication
+- Protected, user-specific API endpoints
 
-- User registration
-- User login
-- Password hashing
-- JWT authentication
-- Protected API endpoints
-
-### Expenses
-
-- Get all expenses
-- Get expense by id
-- Create expense
-- Update expense
-- Delete expense
-- User-scoped expense access
-- Input validation
-- Error handling
-
-### Income Tracking
-
-- Get all income records
-- Create income
-- Update income
-- Delete income
-- Income category support
-- User-scoped income access
-- Input validation
-- Foreign key error handling
-
-### Budget Limits
-
-- Get all budget limits
-- Create budget limit
-- Update budget limit
-- Delete budget limit
+### Financial Management
+- Expense and income CRUD operations
 - Monthly category-based budget limits
-- User-scoped budget access
-- Duplicate budget prevention for the same category and period
-- Input validation
-- Foreign key error handling
-- Budget periods are normalized to the first day of the month
+- Validation and duplicate prevention
 
-### Recurring Payments
+### Payment Management
+- Recurring payments with weekly, monthly, and yearly schedules
+- Automatic generation of due payments
+- Future payment tracking, postponement, and payment history
+- Transaction-based payment operations
 
-- Create, list, update and delete recurring payments
-- Weekly, monthly and yearly frequencies
-- Importance level support
-- Active/inactive status management
-- JWT-protected and user-scoped endpoints
-- Due recurring payments can be processed into future payments
-- Duplicate prevention for generated future payments
-- Transaction-based processing
-- Generated future payments preserve their original due date
-- Duplicate prevention uses recurring payment and original due date
-- Due payment processing reports the actual number of created future payments
-
-### Future Payments
-
-- Get all future payments
-- Get future payment by id
-- Create future payment
-- Update future payment
-- Delete future payment
-- User-scoped future payment access
-- Payment status support
-- Importance level support
-- Input validation
-- Foreign key error handling
-- Future payments start with `pending` status
-- Payments can be postponed with history tracking
-- Payments can be marked as `paid` with history tracking
-- Payment status and importance levels use standardized values
-- Postpone and payment operations are transaction-based
-
-### Reports
-
-- Financial summary
-- Category-based expense reports
-- Monthly expense comparison
-- Weekly expense comparison
-- Future payment status reports
+### Financial Reports
+- Income and expense summaries
+- Category-based reports
+- Weekly and monthly comparisons
 - Custom date range reports
-- Financial discipline score
-- 90-day payment behavior evaluation
-- Importance-weighted payment discipline scoring
-- Overdue future payment penalties
+- Financial discipline score based on payment behavior
 
-## Automated Tests
+## API Overview
 
-The project includes integration tests using xUnit and Microsoft.AspNetCore.Mvc.Testing.
+The main API routes are:
 
-Tests run against a separate PostgreSQL test database to keep development data isolated.
+| Resource | Base Route |
+|---|---|
+| Authentication | `/api/auth` |
+| Expenses | `/api/expenses` |
+| Income | `/api/incomes` |
+| Budget Limits | `/api/budget-limits` |
+| Recurring Payments | `/api/recurring-payments` |
+| Future Payments | `/api/future-payments` |
+| Reports | `/api/reports` |
 
-Current test coverage includes:
+The API uses standard HTTP methods for CRUD operations and dedicated endpoints for actions such as paying, postponing, and processing recurring payments.
 
-- Authentication and JWT-protected endpoints
-- Expense CRUD and user-scoped access
-- Income CRUD and user-scoped access
-- Future payment operations
-- Recurring payment processing
-- Budget limit validation and user-scoped access
-- Financial discipline score calculations
-- Report calculations and user-scoped reporting
-- Input validation and foreign key error handling
+## Getting Started
 
-Current status:
-
-```text
-56 tests passed
-0 tests failed
-```
-
-## Security
-
-- Passwords are stored as hashes
-- JWT tokens are used for authentication
-- User IDs are obtained from authenticated JWT claims
-- Users can only access their own expenses, income records, future payments, budget limits, and recurring payments
-- SQL queries use parameters to reduce SQL injection risk
-- Database connection strings and JWT secrets are kept outside source control
-
-## API Endpoints
-
-### Authentication
-
-```text
-POST /api/auth/register
-POST /api/auth/login
-```
-
-### Expenses
-
-```text
-GET    /api/expenses
-GET    /api/expenses/{id}
-POST   /api/expenses
-PUT    /api/expenses/{id}
-DELETE /api/expenses/{id}
-```
-
-### Income
-
-```text
-GET    /api/incomes
-POST   /api/incomes
-PUT    /api/incomes/{id}
-DELETE /api/incomes/{id}
-```
-
-### Budget Limits
-
-```text
-GET    /api/budget-limits
-POST   /api/budget-limits
-PUT    /api/budget-limits/{id}
-DELETE /api/budget-limits/{id}
-```
-
-### Recurring Payments
-
-```text
-GET /api/recurring-payments
-POST /api/recurring-payments
-PUT /api/recurring-payments/{id}
-DELETE /api/recurring-payments/{id}
-PATCH /api/recurring-payments/{id}/status
-POST /api/recurring-payments/process-due
-```
-
-### Future Payments
-
-```text
-GET    /api/future-payments
-GET    /api/future-payments/{id}
-POST   /api/future-payments
-PUT    /api/future-payments/{id}
-DELETE /api/future-payments/{id}
-PATCH /api/future-payments/{id}/postpone
-PATCH /api/future-payments/{id}/pay
-```
-
-### Reports
-
-```text
-GET /api/reports/summary
-GET /api/reports/categories
-GET /api/reports/monthly
-GET /api/reports/weekly
-GET /api/reports/future-payments/status
-GET /api/reports/range?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
-GET /api/reports/financial-discipline-score
-```
-
-## Project Structure
-
-```text
-PersonalFinanceTracker.Api/
-├── Endpoints/
-│   ├── AuthEndpoints.cs
-│   ├── ExpenseEndpoints.cs
-│   ├── FuturePaymentEndpoints.cs
-│   ├── IncomeEndpoints.cs
-│   ├── BudgetLimitEndpoints.cs
-│   ├── ReportEndpoints.cs
-│   └── RecurringPaymentEndpoints.cs
-│
-├── Models/
-│   ├── ExpenseRequest.cs
-│   ├── ExpenseResponse.cs
-│   ├── FuturePaymentRequest.cs
-│   ├── FuturePaymentResponse.cs
-│   ├── IncomeRequest.cs
-│   ├── IncomeResponse.cs
-│   ├── BudgetLimitRequest.cs
-│   ├── BudgetLimitResponse.cs
-│   ├── LoginRequest.cs
-│   ├── RegisterRequest.cs
-│   ├── RecurringPaymentRequest.cs
-│   ├── RecurringPaymentResponse.cs
-│   ├── RecurringPaymentStatusRequest.cs
-│   ├── FuturePaymentPostponeRequest.cs
-│   ├── FuturePaymentUpdateRequest.cs
-│   └── FinancialDisciplineScoreResponse.cs
-│
-├── Program.cs
-├── appsettings.json
-│
-└── tests/
-    └── PersonalFinanceTracker.Api.Tests/
-        ├── AuthIntegrationTests.cs
-        ├── BudgetLimitIntegrationTests.cs
-        ├── CustomWebApplicationFactory.cs
-        ├── ExpenseIntegrationTests.cs
-        ├── FinancialDisciplineIntegrationTests.cs
-        ├── FuturePaymentIntegrationTests.cs
-        ├── IncomeIntegrationTests.cs
-        ├── RecurringPaymentIntegrationTests.cs
-        ├── ReportIntegrationTests.cs
-        ├── SmokeTests.cs
-        └── TestAuthHelper.cs
-```
-
-## Authentication Flow
-
-1. A user registers with an email and password.
-2. The password is hashed before being stored in PostgreSQL.
-3. The user logs in with their credentials.
-4. The API creates a JWT token.
-5. The client sends the token with protected requests.
-6. The API reads the user ID from the JWT claim.
-7. Database queries are scoped to the authenticated user.
-
-Example:
-
-```text
-Authorization: Bearer <token>
-```
-
-## Local Development
-
-The project requires:
+### Requirements
 
 - .NET 10 SDK
 - PostgreSQL
 
-Sensitive configuration such as the database connection string and JWT secret should not be stored directly in source code.
+### 1. Configure the application
 
-For local development, .NET User Secrets can be used.
+Create a local PostgreSQL database named `expense_tracker`.
 
-Required configuration keys:
+Configure the connection string and JWT secret using **.NET User Secrets**:
+
+```powershell
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Database=expense_tracker;Username=postgres;Password=YOUR_PASSWORD" --project PersonalFinanceTracker.Api.csproj
+
+dotnet user-secrets set "Jwt:Key" "YOUR_LONG_RANDOM_JWT_SECRET" --project PersonalFinanceTracker.Api.csproj
+```
+
+Replace the placeholder values with your own credentials and secret.
+
+### 2. Apply database migrations
+
+The project uses DbUp to manage PostgreSQL schema changes.
+
+For a new local database, configure the migration connection and run:
+
+```powershell
+$env:PFT_MIGRATIONS_CONNECTION = "Host=localhost;Database=expense_tracker;Username=postgres;Password=YOUR_PASSWORD"
+
+$env:PFT_ALLOW_ORIGINAL_DB = "YES"
+
+dotnet run --project tools/PersonalFinanceTracker.Migrations/PersonalFinanceTracker.Migrations.csproj
+```
+
+The migration scripts create the required tables, constraints, and initial reference data. DbUp records applied migrations to prevent duplicate execution.
+
+The migration runner currently supports local PostgreSQL and requires explicit authorization for the `expense_tracker` database.
+
+### 3. Run the API
+
+```powershell
+dotnet run --project PersonalFinanceTracker.Api.csproj
+```
+
+## Automated Testing
+
+The project includes **56 integration tests** covering authentication, financial records, budgets, payments, reporting, validation, and user-scoped access.
+
+Tests use an isolated PostgreSQL database named `personal_finance_tracker_automated_test`.
+
+To prepare the test database and run the full suite:
+
+```powershell
+.\tools\run-integration-tests.ps1
+```
+
+The script applies the database migrations and runs the integration tests. It can create the test database automatically when needed.
+
+**Latest verified test result: 56 passed, 0 failed.**
+
+## Security
+
+- Passwords are securely hashed.
+- JWT authentication protects private endpoints.
+- Financial records are scoped to the authenticated user.
+- Database queries use parameterized SQL.
+- Credentials and JWT secrets are stored outside source control.
+
+## Project Structure
 
 ```text
-ConnectionStrings:DefaultConnection
-Jwt:Key
+PersonalFinanceTracker/
+├── Endpoints/
+├── Models/
+├── Database/
+│   └── Migrations/
+├── tests/
+│   └── PersonalFinanceTracker.Api.Tests/
+├── tools/
+│   ├── PersonalFinanceTracker.Migrations/
+│   └── run-integration-tests.ps1
+├── Program.cs
+└── PersonalFinanceTracker.Api.csproj
 ```
 
-Run the API with:
+## Roadmap
 
-```bash
-dotnet run
-```
-
-## Database Setup
-
-This project uses PostgreSQL.
-
-Before running the API, create a PostgreSQL database and store the connection string using .NET User Secrets.
-
-Example:
-
-```bash
-dotnet user-secrets set "ConnectionStrings:DefaultConnection" "YOUR_CONNECTION_STRING"
-```
-
-The database schema is currently created manually.
-
-Migration support will be added in a future update.
-
-## Planned Features
-
-- Database setup scripts and migration support
 - Docker support
+- CI/CD with GitHub Actions
 - AWS deployment
-- CI/CD
-- Logging and monitoring
-- Production security improvements
-- Frontend/demo application
+- Production security and monitoring
+- Frontend application
+
+## Project Status
+
+**Backend development is ongoing.**
+
+Core financial features, database migrations, and automated integration tests are implemented. Deployment and frontend development are planned for later stages.

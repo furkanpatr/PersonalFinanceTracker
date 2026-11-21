@@ -106,7 +106,7 @@ public class FinancialDisciplineIntegrationTests
         {
             categoryId = 1,
             amount = 500,
-            plannedDate = DateOnly.FromDateTime(DateTime.Today.AddDays(-1)),
+            plannedDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)),
             importanceLevel = "high",
             paymentMethodId = 1
         };
