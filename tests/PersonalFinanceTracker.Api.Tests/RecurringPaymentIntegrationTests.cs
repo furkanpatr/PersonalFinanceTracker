@@ -330,4 +330,229 @@ public class RecurringPaymentIntegrationTests
         );
     }
 
+    [Fact]
+    public async Task ProcessDue_MonthEnd_PreservesOriginalDay()
+    {
+        await using var factory =
+            new CustomWebApplicationFactory();
+
+        var client = factory.CreateClient();
+
+        var token =
+            await TestAuthHelper.RegisterAndLoginAsync(client);
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", token);
+
+        var createResponse = await client.PostAsJsonAsync(
+            "/api/recurring-payments",
+            new
+            {
+                categoryId = 1,
+                paymentMethodId = 1,
+                name = "Month End Test",
+                amount = 500,
+                frequency = "monthly",
+                nextDueDate = new DateOnly(2025, 1, 31),
+                importanceLevel = "medium",
+                description = "Month end date test"
+            });
+
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+
+        var created =
+            await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+
+        var id = created.GetProperty("id").GetInt32();
+
+        for (int i = 0; i < 2; i++)
+        {
+            var response = await client.PostAsync(
+                "/api/recurring-payments/process-due", null);
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        var getResponse =
+            await client.GetAsync("/api/recurring-payments");
+
+        Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
+
+        var payments =
+            await getResponse.Content.ReadFromJsonAsync<JsonElement>();
+
+        var payment = payments.EnumerateArray()
+            .First(p => p.GetProperty("id").GetInt32() == id);
+
+        Assert.Equal(
+            "2025-03-31",
+            payment.GetProperty("nextDueDate").GetString());
+    }
+
+    [Fact]
+    public async Task ProcessDue_LeapYear_PreservesFebruary29()
+    {
+        await using var factory = new CustomWebApplicationFactory();
+        var client = factory.CreateClient();
+
+        var token = await TestAuthHelper.RegisterAndLoginAsync(client);
+
+        client.DefaultRequestHeaders.Authorization =
+        new AuthenticationHeaderValue("Bearer", token);
+
+        var createResponse = await client.PostAsJsonAsync(
+        "/api/recurring-payments",
+        new
+        {
+            categoryId = 1,
+            paymentMethodId = 1,
+            name = "Leap Year Test",
+            amount = 500,
+            frequency = "yearly",
+            nextDueDate = new DateOnly(2020, 2, 29),
+            importanceLevel = "medium",
+            description = "Leap year date test"
+        });
+
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+
+        var created =
+        await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+
+        var id = created.GetProperty("id").GetInt32();
+
+        for (int i = 0; i < 4; i++)
+        {
+            var response = await client.PostAsync(
+            "/api/recurring-payments/process-due", null);
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        var getResponse =
+        await client.GetAsync("/api/recurring-payments");
+
+        var payments =
+        await getResponse.Content.ReadFromJsonAsync<JsonElement>();
+
+        var payment = payments.EnumerateArray()
+        .First(p => p.GetProperty("id").GetInt32() == id);
+
+        Assert.Equal(
+        "2024-02-29",
+        payment.GetProperty("nextDueDate").GetString());
+    }
+
+    [Fact]
+    public async Task ProcessDue_Day30_PreservesOriginalDay()
+    {
+        await using var factory = new CustomWebApplicationFactory();
+        var client = factory.CreateClient();
+
+        var token = await TestAuthHelper.RegisterAndLoginAsync(client);
+
+        client.DefaultRequestHeaders.Authorization =
+        new AuthenticationHeaderValue("Bearer", token);
+
+        var createResponse = await client.PostAsJsonAsync(
+        "/api/recurring-payments",
+        new
+        {
+            categoryId = 1,
+            paymentMethodId = 1,
+            name = "Day 30 Test",
+            amount = 500,
+            frequency = "monthly",
+            nextDueDate = new DateOnly(2025, 1, 30),
+            importanceLevel = "medium",
+            description = "Monthly day 30 test"
+        });
+
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+
+        var created =
+        await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+
+        var id = created.GetProperty("id").GetInt32();
+
+        for (int i = 0; i < 2; i++)
+        {
+            var response = await client.PostAsync(
+            "/api/recurring-payments/process-due", null);
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        var getResponse =
+        await client.GetAsync("/api/recurring-payments");
+
+        Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
+
+        var payments =
+        await getResponse.Content.ReadFromJsonAsync<JsonElement>();
+
+        var payment = payments.EnumerateArray()
+        .First(p => p.GetProperty("id").GetInt32() == id);
+
+        Assert.Equal(
+        "2025-03-30",
+        payment.GetProperty("nextDueDate").GetString());
+    }
+
+    [Fact]
+    public async Task ProcessDue_Day29_PreservesOriginalDay()
+    {
+        await using var factory = new CustomWebApplicationFactory();
+        var client = factory.CreateClient();
+
+        var token = await TestAuthHelper.RegisterAndLoginAsync(client);
+
+        client.DefaultRequestHeaders.Authorization =
+        new AuthenticationHeaderValue("Bearer", token);
+
+        var createResponse = await client.PostAsJsonAsync(
+        "/api/recurring-payments",
+        new
+        {
+            categoryId = 1,
+            paymentMethodId = 1,
+            name = "Day 29 Test",
+            amount = 500,
+            frequency = "monthly",
+            nextDueDate = new DateOnly(2025, 1, 29),
+            importanceLevel = "medium",
+            description = "Monthly day 29 test"
+        });
+
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+
+        var created =
+        await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+
+        var id = created.GetProperty("id").GetInt32();
+
+        for (int i = 0; i < 2; i++)
+        {
+            var response = await client.PostAsync(
+            "/api/recurring-payments/process-due", null);
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        var getResponse =
+        await client.GetAsync("/api/recurring-payments");
+
+        Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
+
+        var payments =
+        await getResponse.Content.ReadFromJsonAsync<JsonElement>();
+
+        var payment = payments.EnumerateArray()
+        .First(p => p.GetProperty("id").GetInt32() == id);
+
+        Assert.Equal(
+        "2025-03-29",
+        payment.GetProperty("nextDueDate").GetString());
+    }
+
 }

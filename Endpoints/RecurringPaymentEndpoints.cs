@@ -137,10 +137,10 @@ public static class RecurringPaymentEndpoints
                 var sql = """
                     INSERT INTO recurring_payments
                         (user_id, category_id, payment_method_id, name, amount,
-                        frequency, next_due_date, importance_level, description)
+                        frequency, next_due_date, schedule_day, importance_level, description)
                     VALUES
                         (@userId, @categoryId, @paymentMethodId, @name, @amount,
-                        @frequency, @nextDueDate, @importanceLevel, @description)
+                        @frequency, @nextDueDate, @scheduleDay, @importanceLevel, @description)
                     RETURNING id;
                     """;
 
@@ -148,20 +148,15 @@ public static class RecurringPaymentEndpoints
                     new NpgsqlCommand(sql, connection);
 
                 command.Parameters.AddWithValue("userId", userId);
-                command.Parameters.AddWithValue(
-                    "categoryId", recurringPayment.CategoryId);
-                command.Parameters.AddWithValue(
-                    "paymentMethodId", recurringPayment.PaymentMethodId);
+                command.Parameters.AddWithValue("categoryId", recurringPayment.CategoryId);
+                command.Parameters.AddWithValue("paymentMethodId", recurringPayment.PaymentMethodId);
                 command.Parameters.AddWithValue("name", recurringPayment.Name);
                 command.Parameters.AddWithValue("amount", recurringPayment.Amount);
                 command.Parameters.AddWithValue("frequency", recurringPayment.Frequency);
-                command.Parameters.AddWithValue(
-                    "nextDueDate", recurringPayment.NextDueDate);
-                command.Parameters.AddWithValue(
-                    "importanceLevel", recurringPayment.ImportanceLevel);
-                command.Parameters.AddWithValue(
-                    "description",
-                    (object?)recurringPayment.Description ?? DBNull.Value);
+                command.Parameters.AddWithValue("nextDueDate", recurringPayment.NextDueDate);
+                command.Parameters.AddWithValue("scheduleDay", (short)recurringPayment.NextDueDate.Day);
+                command.Parameters.AddWithValue("importanceLevel", recurringPayment.ImportanceLevel);
+                command.Parameters.AddWithValue("description", (object?)recurringPayment.Description ?? DBNull.Value);
 
                 var newId =
                     (int)(await command.ExecuteScalarAsync())!;
@@ -266,6 +261,7 @@ public static class RecurringPaymentEndpoints
                         amount = @amount,
                         frequency = @frequency,
                         next_due_date = @nextDueDate,
+                        schedule_day = @scheduleDay,
                         importance_level = @importanceLevel,
                         description = @description
                     WHERE id = @id
@@ -283,6 +279,9 @@ public static class RecurringPaymentEndpoints
                 command.Parameters.AddWithValue("amount", recurringPayment.Amount);
                 command.Parameters.AddWithValue("frequency", recurringPayment.Frequency);
                 command.Parameters.AddWithValue("nextDueDate", recurringPayment.NextDueDate);
+                command.Parameters.AddWithValue(
+                    "scheduleDay", (short)recurringPayment.NextDueDate.Day);
+
                 command.Parameters.AddWithValue("importanceLevel", recurringPayment.ImportanceLevel);
                 command.Parameters.AddWithValue(
                     "description",
@@ -489,7 +488,8 @@ public static class RecurringPaymentEndpoints
                         next_due_date,
                         importance_level,
                         payment_method_id,
-                        frequency
+                        frequency,
+                        schedule_day
                     FROM recurring_payments
                     WHERE user_id = @userId
                     AND is_active = TRUE
@@ -504,7 +504,8 @@ public static class RecurringPaymentEndpoints
                     DateOnly NextDueDate,
                     string ImportanceLevel,
                     int PaymentMethodId,
-                    string Frequency
+                    string Frequency,
+                    short ScheduleDay
                 )>();
 
                 await using (var selectCommand =
@@ -524,7 +525,8 @@ public static class RecurringPaymentEndpoints
                             reader.GetFieldValue<DateOnly>(3),
                             reader.GetString(4),
                             reader.GetInt32(5),
-                            reader.GetString(6)
+                            reader.GetString(6),
+                            reader.GetInt16(7)
                         ));
                     }
                 }
@@ -564,13 +566,29 @@ public static class RecurringPaymentEndpoints
                         createdCount++;
                     }
 
+
+                    var nextMonth = payment.NextDueDate.AddMonths(1);
+
                     var newNextDueDate = payment.Frequency switch
                     {
                         "weekly" => payment.NextDueDate.AddDays(7),
-                        "monthly" => payment.NextDueDate.AddMonths(1),
-                        "yearly" => payment.NextDueDate.AddYears(1),
+                        "monthly" => new DateOnly(
+                        nextMonth.Year,
+                        nextMonth.Month,
+                        Math.Min(
+                        payment.ScheduleDay,
+                        DateTime.DaysInMonth(nextMonth.Year, nextMonth.Month))),
+                        "yearly" => new DateOnly(
+                        payment.NextDueDate.Year + 1,
+                        payment.NextDueDate.Month,
+                        Math.Min(
+                        payment.ScheduleDay,
+                        DateTime.DaysInMonth(
+                        payment.NextDueDate.Year + 1,
+                        payment.NextDueDate.Month))),
                         _ => throw new InvalidOperationException("Geçersiz frequency")
                     };
+
 
                     var updateSql = """
                         UPDATE recurring_payments

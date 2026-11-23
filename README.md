@@ -1,45 +1,47 @@
 # Personal Finance Tracker
 
-A REST API for managing personal finances, built with **ASP.NET Core (.NET 10)** and **PostgreSQL**.
+A REST API for personal finance management, built with **ASP.NET Core (.NET 10)** and **PostgreSQL**.
 
-The project supports expense and income tracking, budget management, recurring payments, future payments, and financial reporting. Financial records are protected with JWT authentication and user-scoped access.
+The application supports expense tracking, income management, monthly budgets, recurring payments, future payments, and financial reporting.
 
 ## Tech Stack
 
-- **Backend:** C#, ASP.NET Core Minimal APIs (.NET 10)
+- **Backend:** C#, ASP.NET Core Minimal APIs
 - **Database:** PostgreSQL, Npgsql
-- **Database Migrations:** DbUp
-- **Authentication:** JWT, password hashing
+- **Migrations:** DbUp
+- **Authentication:** JWT
 - **Testing:** xUnit, ASP.NET Core Integration Testing
 
 ## Features
 
 ### Authentication
 - User registration and login
-- Password hashing and JWT authentication
-- Protected, user-specific API endpoints
+- Password hashing
+- JWT authentication and user-scoped access
 
 ### Financial Management
 - Expense and income CRUD operations
-- Monthly category-based budget limits
-- Validation and duplicate prevention
+- Category-based monthly budget limits
+- Input validation and duplicate prevention
 
 ### Payment Management
-- Recurring payments with weekly, monthly, and yearly schedules
+- Weekly, monthly, and yearly recurring payments
 - Automatic generation of due payments
 - Future payment tracking, postponement, and payment history
 - Transaction-based payment operations
+- PostgreSQL row-level locking for payment and postponement operations
+- Duplicate payment processing protection
+- Month-end date handling for recurring payments
+- Leap-year-aware recurring payment scheduling
 
 ### Financial Reports
 - Income and expense summaries
 - Category-based reports
 - Weekly and monthly comparisons
 - Custom date range reports
-- Financial discipline score based on payment behavior
+- Financial discipline score
 
 ## API Overview
-
-The main API routes are:
 
 | Resource | Base Route |
 |---|---|
@@ -51,7 +53,7 @@ The main API routes are:
 | Future Payments | `/api/future-payments` |
 | Reports | `/api/reports` |
 
-The API uses standard HTTP methods for CRUD operations and dedicated endpoints for actions such as paying, postponing, and processing recurring payments.
+The API provides standard CRUD operations and dedicated endpoints for payment processing, postponement, recurring payments, and financial reports.
 
 ## Getting Started
 
@@ -64,7 +66,7 @@ The API uses standard HTTP methods for CRUD operations and dedicated endpoints f
 
 Create a local PostgreSQL database named `expense_tracker`.
 
-Configure the connection string and JWT secret using **.NET User Secrets**:
+Store the connection string and JWT secret using .NET User Secrets:
 
 ```powershell
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Database=expense_tracker;Username=postgres;Password=YOUR_PASSWORD" --project PersonalFinanceTracker.Api.csproj
@@ -76,9 +78,7 @@ Replace the placeholder values with your own credentials and secret.
 
 ### 2. Apply database migrations
 
-The project uses DbUp to manage PostgreSQL schema changes.
-
-For a new local database, configure the migration connection and run:
+Database migrations are managed using **DbUp**.
 
 ```powershell
 $env:PFT_MIGRATIONS_CONNECTION = "Host=localhost;Database=expense_tracker;Username=postgres;Password=YOUR_PASSWORD"
@@ -88,7 +88,13 @@ $env:PFT_ALLOW_ORIGINAL_DB = "YES"
 dotnet run --project tools/PersonalFinanceTracker.Migrations/PersonalFinanceTracker.Migrations.csproj
 ```
 
-The migration scripts create the required tables, constraints, and initial reference data. DbUp records applied migrations to prevent duplicate execution.
+Migration files:
+
+- `001_initial_schema.sql` — Database tables and constraints
+- `002_seed_reference_data.sql` — Initial categories and payment methods
+- `003_recurring_payment_schedule_day.sql` — Recurring payment schedule day support
+
+Applied migrations are tracked automatically to prevent duplicate execution.
 
 The migration runner currently supports local PostgreSQL and requires explicit authorization for the `expense_tracker` database.
 
@@ -100,27 +106,38 @@ dotnet run --project PersonalFinanceTracker.Api.csproj
 
 ## Automated Testing
 
-The project includes **56 integration tests** covering authentication, financial records, budgets, payments, reporting, validation, and user-scoped access.
+The project includes **64 integration tests** covering:
+
+- Authentication and authorization
+- Expense, income, and budget operations
+- Recurring and future payments
+- Concurrent payment requests
+- Payment postponement consistency
+- Month-end and leap-year date calculations
+- Financial reports and validation
+- User-scoped data access
 
 Tests use an isolated PostgreSQL database named `personal_finance_tracker_automated_test`.
 
-To prepare the test database and run the full suite:
+Run the complete test suite:
 
 ```powershell
 .\tools\run-integration-tests.ps1
 ```
 
-The script applies the database migrations and runs the integration tests. It can create the test database automatically when needed.
+The script prepares the test database, applies migrations, and executes the integration tests.
 
-**Latest verified test result: 56 passed, 0 failed.**
+**Latest verified result: 64 passed, 0 failed.**
 
 ## Security
 
-- Passwords are securely hashed.
-- JWT authentication protects private endpoints.
-- Financial records are scoped to the authenticated user.
-- Database queries use parameterized SQL.
-- Credentials and JWT secrets are stored outside source control.
+- Hashed user passwords
+- JWT-protected endpoints
+- User-scoped financial records
+- Parameterized SQL queries
+- Transaction-based payment operations
+- PostgreSQL row-level locking for critical payment actions
+- Secrets and connection strings stored outside source control
 
 ## Project Structure
 
@@ -130,6 +147,9 @@ PersonalFinanceTracker/
 ├── Models/
 ├── Database/
 │   └── Migrations/
+│       ├── 001_initial_schema.sql
+│       ├── 002_seed_reference_data.sql
+│       └── 003_recurring_payment_schedule_day.sql
 ├── tests/
 │   └── PersonalFinanceTracker.Api.Tests/
 ├── tools/
@@ -141,14 +161,18 @@ PersonalFinanceTracker/
 
 ## Roadmap
 
+- Code refactoring and API consistency
 - Docker support
+- Production security and logging
 - CI/CD with GitHub Actions
 - AWS deployment
-- Production security and monitoring
+- Monitoring and health checks
 - Frontend application
 
 ## Project Status
 
 **Backend development is ongoing.**
 
-Core financial features, database migrations, and automated integration tests are implemented. Deployment and frontend development are planned for later stages.
+Core financial features, PostgreSQL migrations, payment consistency improvements, recurring payment date handling, and automated integration tests are implemented.
+
+Containerization, cloud deployment, and frontend development are planned for upcoming stages.

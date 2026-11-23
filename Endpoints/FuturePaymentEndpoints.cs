@@ -468,7 +468,8 @@ public static class FuturePaymentEndpoints
                         status
                     FROM future_payments
                     WHERE id = @id
-                    AND user_id = @userId;
+                    AND user_id = @userId
+                    FOR UPDATE;
                     """;
 
                 await using var selectCommand =
@@ -607,7 +608,8 @@ public static class FuturePaymentEndpoints
                         status
                     FROM future_payments
                     WHERE id = @id
-                    AND user_id = @userId;
+                    AND user_id = @userId
+                    FOR UPDATE;
                     """;
 
                 await using var selectCommand =
