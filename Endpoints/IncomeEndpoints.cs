@@ -1,6 +1,7 @@
 using Npgsql;
 using PersonalFinanceTracker.Api.Models;
 using System.Security.Claims;
+using PersonalFinanceTracker.Api.Helpers;
 
 namespace PersonalFinanceTracker.Api.Endpoints;
 
@@ -13,10 +14,8 @@ public static class IncomeEndpoints
             IConfiguration configuration,
             ClaimsPrincipal user) =>
         {
-            var userIdValue =
-                user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-            if (!int.TryParse(userIdValue, out var userId))
+            if (!UserIdHelper.TryGetUserId(user, out var userId))
             {
                 return Results.Unauthorized();
             }
@@ -83,10 +82,8 @@ public static class IncomeEndpoints
             IConfiguration configuration,
             ClaimsPrincipal user) =>
         {
-            var userIdValue =
-                user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-            if (!int.TryParse(userIdValue, out var userId))
+            if (!UserIdHelper.TryGetUserId(user, out var userId))
             {
                 return Results.Unauthorized();
             }
@@ -174,10 +171,7 @@ public static class IncomeEndpoints
                 });
             }
 
-            var userIdValue =
-                user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-            if (!int.TryParse(userIdValue, out var userId))
+            if (!UserIdHelper.TryGetUserId(user, out var userId))
             {
                 return Results.Unauthorized();
             }
@@ -271,10 +265,7 @@ public static class IncomeEndpoints
                 });
             }
 
-            var userIdValue =
-                user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-            if (!int.TryParse(userIdValue, out var userId))
+            if (!UserIdHelper.TryGetUserId(user, out var userId))
             {
                 return Results.Unauthorized();
             }

@@ -18,6 +18,7 @@ The application supports expense tracking, income management, monthly budgets, r
 - User registration and login
 - Password hashing
 - JWT authentication and user-scoped access
+- Centralized JWT user ID extraction using a reusable helper
 
 ### Financial Management
 - Expense and income CRUD operations
@@ -106,7 +107,7 @@ dotnet run --project PersonalFinanceTracker.Api.csproj
 
 ## Automated Testing
 
-The project includes **64 integration tests** covering:
+The project includes **65 integration tests** covering:
 
 - Authentication and authorization
 - Expense, income, and budget operations
@@ -127,7 +128,7 @@ Run the complete test suite:
 
 The script prepares the test database, applies migrations, and executes the integration tests.
 
-**Latest verified result: 64 passed, 0 failed.**
+**Latest verified result: 65 passed, 0 failed.**
 
 ## Security
 
@@ -144,6 +145,8 @@ The script prepares the test database, applies migrations, and executes the inte
 ```text
 PersonalFinanceTracker/
 ├── Endpoints/
+├── Helpers/
+│   └── UserIdHelper.cs
 ├── Models/
 ├── Database/
 │   └── Migrations/

@@ -1,6 +1,7 @@
 using Npgsql;
 using PersonalFinanceTracker.Api.Models;
 using System.Security.Claims;
+using PersonalFinanceTracker.Api.Helpers;
 
 namespace PersonalFinanceTracker.Api.Endpoints;
 
@@ -14,13 +15,12 @@ public static class ExpenseEndpoints
             IConfiguration configuration,
             ClaimsPrincipal user) =>
         {
-            var userIdValue =
-                user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-            if (!int.TryParse(userIdValue, out var userId))
+            if (!UserIdHelper.TryGetUserId(user, out var userId))
             {
                 return Results.Unauthorized();
             }
+
 
             try
             {
@@ -96,10 +96,7 @@ public static class ExpenseEndpoints
                 });
             }
 
-            var userIdValue =
-                user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-            if (!int.TryParse(userIdValue, out var userId))
+            if (!UserIdHelper.TryGetUserId(user, out var userId))
             {
                 return Results.Unauthorized();
             }
@@ -174,10 +171,8 @@ public static class ExpenseEndpoints
             IConfiguration configuration,
             ClaimsPrincipal user) =>
         {
-            var userIdValue =
-                user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-            if (!int.TryParse(userIdValue, out var userId))
+            if (!UserIdHelper.TryGetUserId(user, out var userId))
             {
                 return Results.Unauthorized();
             }
@@ -267,10 +262,15 @@ public static class ExpenseEndpoints
             IConfiguration configuration,
             ClaimsPrincipal user) =>
         {
-            var userIdValue =
-                user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (id <= 0)
+            {
+                return Results.BadRequest(new
+                {
+                    message = "Id 0'dan büyük olmalıdır"
+                });
+            }
 
-            if (!int.TryParse(userIdValue, out var userId))
+            if (!UserIdHelper.TryGetUserId(user, out var userId))
             {
                 return Results.Unauthorized();
             }
@@ -374,10 +374,7 @@ public static class ExpenseEndpoints
                 });
             }
 
-            var userIdValue =
-                user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-            if (!int.TryParse(userIdValue, out var userId))
+            if (!UserIdHelper.TryGetUserId(user, out var userId))
             {
                 return Results.Unauthorized();
             }

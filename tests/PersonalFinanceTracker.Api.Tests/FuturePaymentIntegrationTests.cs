@@ -331,10 +331,10 @@ public class FuturePaymentIntegrationTests
 
         await Task.WhenAll(payTask, postponeTask);
 
-        Assert.Equal(HttpStatusCode.OK, payTask.Result.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await payTask).StatusCode);
 
         Assert.Contains(
-            postponeTask.Result.StatusCode,
+            (await postponeTask).StatusCode,
             new[] { HttpStatusCode.OK, HttpStatusCode.BadRequest });
 
         var getResponse =
@@ -348,7 +348,7 @@ public class FuturePaymentIntegrationTests
         Assert.Equal("paid", payment.GetProperty("status").GetString());
 
         var expectedDate =
-            postponeTask.Result.StatusCode == HttpStatusCode.OK
+            (await postponeTask).StatusCode == HttpStatusCode.OK
                 ? newPlannedDate
                 : plannedDate;
 

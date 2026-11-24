@@ -422,4 +422,34 @@ public class ExpenseIntegrationTests
             response.StatusCode
         );
     }
+
+    [Fact]
+    public async Task UpdateExpense_WithInvalidId_ReturnsBadRequest()
+    {
+        await using var factory = new CustomWebApplicationFactory();
+        var client = factory.CreateClient();
+
+        var token = await TestAuthHelper.RegisterAndLoginAsync(client);
+
+        client.DefaultRequestHeaders.Authorization =
+        new AuthenticationHeaderValue("Bearer", token);
+
+        var request = new
+        {
+            categoryId = 1,
+            amount = 250,
+            date = DateOnly.FromDateTime(DateTime.UtcNow),
+            place = "Test Market",
+            description = "Invalid ID test",
+            paymentMethodId = 1
+        };
+
+        var response = await client.PutAsJsonAsync(
+        "/api/expenses/0",
+        request
+        );
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
 }
