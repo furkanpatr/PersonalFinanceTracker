@@ -2,12 +2,49 @@ using PersonalFinanceTracker.Api.Endpoints;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Microsoft.AspNetCore.DataProtection;
+using System.Security.Cryptography.X509Certificates;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+
+var certificatePath = "/run/secrets/dataprotection.pfx";
+var passwordPath = "/run/secrets/dp_cert_password";
+
+if (builder.Environment.IsProduction() && !File.Exists(certificatePath))
+{
+    throw new InvalidOperationException(
+        "Production ortaminda Data Protection sertifikasi bulunamadi."
+    );
+}
+
+if (File.Exists(certificatePath))
+{
+    var certificatePassword =
+        File.ReadAllText(passwordPath).TrimEnd('\r', '\n');
+
+    var certificate = X509CertificateLoader.LoadPkcs12FromFile(
+        certificatePath,
+        certificatePassword,
+        X509KeyStorageFlags.EphemeralKeySet
+    );
+
+    if (!certificate.HasPrivateKey)
+    {
+        throw new InvalidOperationException(
+            "Data Protection sertifikasinin ozel anahtari bulunamadi."
+        );
+    }
+
+    builder.Services.AddDataProtection()
+        .PersistKeysToFileSystem(
+            new DirectoryInfo("/app/DataProtection-Keys")
+        )
+        .ProtectKeysWithCertificate(certificate);
+}
 
 // JWT secret key'i uygulama ayarlarından alır.
 var jwtKey = builder.Configuration["Jwt:Key"];

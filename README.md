@@ -11,6 +11,7 @@ The application supports expense tracking, income management, monthly budgets, r
 - **Migrations:** DbUp
 - **Authentication:** JWT
 - **Testing:** xUnit, ASP.NET Core Integration Testing
+- **Containerization:** Docker, Docker Compose
 
 ## Features
 
@@ -97,13 +98,101 @@ Migration files:
 
 Applied migrations are tracked automatically to prevent duplicate execution.
 
-The migration runner currently supports local PostgreSQL and requires explicit authorization for the `expense_tracker` database.
+
+The migration runner supports both local PostgreSQL and the Docker Compose PostgreSQL service. Docker access requires explicit authorization through PFT_ALLOW_DOCKER_DB, while migrations targeting expense_tracker require PFT_ALLOW_ORIGINAL_DB.
 
 ### 3. Run the API
 
 ```powershell
 dotnet run --project PersonalFinanceTracker.Api.csproj
 ```
+
+## Docker Setup
+
+The application supports containerized deployment using Docker Compose.
+
+### Requirements
+
+- Docker Desktop
+- Docker Compose
+- A password-protected Data Protection certificate at `.secrets/dataprotection.pfx`
+
+The certificate must be created locally and is excluded from Git and Docker build contexts.
+
+### Create the Data Protection Certificate
+
+Run the following commands in PowerShell to create a local, password-protected X.509 certificate:
+
+```powershell
+New-Item -ItemType Directory -Path ".secrets" -Force | Out-Null
+
+$dpCert = New-SelfSignedCertificate -Type DocumentEncryptionCert -Subject "CN=PersonalFinanceTracker DataProtection" -CertStoreLocation "Cert:\CurrentUser\My" -KeyExportPolicy Exportable -KeyAlgorithm RSA -KeyLength 3072 -HashAlgorithm SHA256 -NotAfter (Get-Date).AddYears(2)
+
+$pfxPassword = Read-Host "PFX certificate password" -AsSecureString
+
+Export-PfxCertificate -Cert $dpCert -FilePath ".secrets/dataprotection.pfx" -Password $pfxPassword
+```
+
+Store the PFX password securely and restrict access to the `.secrets` directory.
+
+Back up the certificate and password securely. Existing encrypted Data Protection keys may become unreadable if the original certificate or its private key is lost.
+
+Never commit the PFX file, its password, or Data Protection key backups to Git.
+
+### Configure Environment Variables
+
+Set the following variables in the same PowerShell terminal:
+
+```powershell
+$env:PFT_POSTGRES_PASSWORD = [System.Net.NetworkCredential]::new("", (Read-Host "PostgreSQL password" -AsSecureString)).Password
+
+$env:PFT_JWT_KEY = [Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
+
+$env:PFT_DP_CERT_PASSWORD = [System.Net.NetworkCredential]::new("", (Read-Host "PFX certificate password" -AsSecureString)).Password
+```
+
+The PFX password must match the certificate stored in `.secrets/dataprotection.pfx`.
+
+### Start the Application
+
+```powershell
+docker compose up -d --build api
+```
+
+Docker Compose starts PostgreSQL, applies database migrations, and starts the API.
+
+API address: `http://localhost:8080`
+
+### Check Container Status
+
+```powershell
+docker compose ps -a
+```
+
+### View API Logs
+
+```powershell
+docker compose logs --tail 30 api
+```
+
+### Stop the Application
+
+```powershell
+docker compose down
+```
+
+Named Docker volumes preserve database records and Data Protection keys between container restarts.
+
+Do not use `docker compose down -v` unless you intentionally want to remove the associated persistent volumes.
+
+### Security Notes
+
+- PostgreSQL is not exposed to the host.
+- The API is bound to `127.0.0.1:8080`.
+- The API runs as a non-root user.
+- Data Protection keys are stored in a persistent volume.
+- Newly generated Data Protection keys are protected using an X.509 certificate.
+- Local certificates and private secrets are excluded from source control.
 
 ## Automated Testing
 
@@ -159,13 +248,16 @@ PersonalFinanceTracker/
 │   ├── PersonalFinanceTracker.Migrations/
 │   └── run-integration-tests.ps1
 ├── Program.cs
-└── PersonalFinanceTracker.Api.csproj
+├── PersonalFinanceTracker.Api.csproj
+├── Dockerfile
+├── Dockerfile.migrations
+├── compose.yaml
+└── .dockerignore
+
 ```
 
 ## Roadmap
 
-- Code refactoring and API consistency
-- Docker support
 - Production security and logging
 - CI/CD with GitHub Actions
 - AWS deployment
@@ -178,4 +270,4 @@ PersonalFinanceTracker/
 
 Core financial features, PostgreSQL migrations, payment consistency improvements, recurring payment date handling, and automated integration tests are implemented.
 
-Containerization, cloud deployment, and frontend development are planned for upcoming stages.
+Docker Compose containerization has been implemented and tested locally. Cloud deployment and frontend development are planned for upcoming stages.

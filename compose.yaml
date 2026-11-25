@@ -1,0 +1,55 @@
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: expense_tracker
+      POSTGRES_USER: pft_app
+      POSTGRES_PASSWORD: ${PFT_POSTGRES_PASSWORD:?Database password is required}
+    volumes:
+      - pft_postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U pft_app -d expense_tracker" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrations:
+    build:
+      context: .
+      dockerfile: Dockerfile.migrations
+    environment:
+      PFT_MIGRATIONS_CONNECTION: "Host=db;Port=5432;Database=expense_tracker;Username=pft_app;Password=${PFT_POSTGRES_PASSWORD:?Database password is required}"
+      PFT_ALLOW_DOCKER_DB: "YES"
+      PFT_ALLOW_ORIGINAL_DB: "YES"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - pft_dataprotection_keys:/app/DataProtection-Keys
+      - ./.secrets/dataprotection.pfx:/run/secrets/dataprotection.pfx:ro
+    secrets:
+      - dp_cert_password
+    environment:
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=expense_tracker;Username=pft_app;Password=${PFT_POSTGRES_PASSWORD:?Database password is required}"
+      Jwt__Key: "${PFT_JWT_KEY:?JWT secret is required}"
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  pft_postgres_data:
+  pft_dataprotection_keys:
+
+secrets:
+  dp_cert_password:
+    environment: PFT_DP_CERT_PASSWORD

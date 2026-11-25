@@ -486,3 +486,6 @@ requests.http
 
 # Local VS Code settings
 .vscode/
+
+# Local certificates and private secrets
+.secrets/

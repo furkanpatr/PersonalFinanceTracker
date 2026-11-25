@@ -16,14 +16,18 @@ var connectionOptions =
 
 var databaseName = connectionOptions.Database;
 
-if (connectionOptions.Host is not ("localhost" or "127.0.0.1"))
+var isLocalHost =
+connectionOptions.Host is "localhost" or "127.0.0.1";
+
+var isDockerHost =
+connectionOptions.Host == "db" &&
+Environment.GetEnvironmentVariable("PFT_ALLOW_DOCKER_DB") == "YES";
+
+if (!isLocalHost && !isDockerHost)
 {
-    Console.Error.WriteLine(
-        "Migration yalnizca yerel PostgreSQL sunucusunda calistirilabilir."
-    );
+    Console.Error.WriteLine("Migration hedef sunucusuna izin verilmedi.");
     return 1;
 }
-
 
 var isTestDatabase =
     databaseName == "personal_finance_tracker_automated_test";
